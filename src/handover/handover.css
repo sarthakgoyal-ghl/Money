@@ -405,9 +405,14 @@ html[data-handover="true"] body {
 }
 .vx-brand {
   flex-shrink: 0;
-  font-family: var(--vx-sans);
-  font-size: 13px; font-weight: 700; letter-spacing: -0.02em;
-  color: inherit !important; text-decoration: none; white-space: nowrap;
+  font-family: var(--vx-display);
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: inherit !important;
+  text-decoration: none;
+  white-space: nowrap;
 }
 .vx-brand-full { display: none; }
 .vx-brand-short { display: inline; }
