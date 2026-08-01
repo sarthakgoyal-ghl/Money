@@ -1,0 +1,447 @@
+/* mapbox-gl canvas layout. Loaded up front (~5 kB) so the basemap cannot
+   flash unstyled when it is dynamically imported. */
+@import "mapbox-gl/dist/mapbox-gl.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* The product is a dark map; only the two transaction sheets are light. */
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Journey Canvas tokens — mirrored in tailwind.config.js so raw SVG
+     gradients and inline styles can reference the same values. */
+  --night: #070b12;
+  --night-raised: #0e1520;
+  --night-line: #1c2634;
+  --sky-night: #0b1524;
+  --sky-mid: #102d52;
+  --route-blue: #2688ff;
+  --route-cyan: #42d6ff;
+  --ai-lavender: #9c8cff;
+  --signal-ok: #28b887;
+  --signal-warn: #e29a2d;
+  --signal-danger: #e0525e;
+
+  /* Raises the Mapbox attribution above chrome that covers the bottom of a map.
+     0 by default: every current screen leaves the map's own bottom edge free,
+     and a non-zero default pushed the attribution clean out of the 168 px
+     preview inside the assistant's recommendation bubble. */
+  --dock-height: 0px;
+
+  /* ---------------------------------------------------------------- *
+   * Figma tokens — read from the file's local variables through MCP.  *
+   * Mirrored in tailwind.config.js so raw gradients and inline styles *
+   * reference the same values. See docs/figma-implementation-map.md.  *
+   * ---------------------------------------------------------------- */
+  --fig-blue: #0088ff;
+  --fig-blue-ios: #0078ff;
+  --fig-blue-arrow: #007aff;
+  --fig-gray-900: #101828;
+  --fig-gray-600: #475467;
+  --fig-tertiary: #909093;
+  --fig-bubble: #e9e9eb;
+
+  /* The exact mobile frame from Figma `1204:80298`. */
+  --fig-viewport-w: 402px;
+  --fig-viewport-h: 874px;
+  --fig-device-border: 10px;
+  --fig-device-border-color: rgba(255, 255, 255, 0.75);
+  --fig-device-radius: 40px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #05070c;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "SF Pro Display",
+    Inter,
+    "Segoe UI",
+    Roboto,
+    system-ui,
+    sans-serif;
+  /* Default text colour is white: the dock and the map controls are the
+     dominant surfaces, and the two light sheets set their own ink colours. */
+  color: #ffffff;
+  font-feature-settings:
+    "cv11",
+    "ss01";
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Focus ring for light surfaces. */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-white;
+  }
+
+  /* Focus ring for night surfaces, where the accent blue on a near-black
+     background does not read. */
+  .focus-ring-dark {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-route-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-night;
+  }
+
+  /* Controls floating directly on the satellite map, where there is no solid
+     offset colour behind the ring. */
+  .focus-ring-map {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-route-cyan focus-visible:ring-offset-0;
+  }
+
+  .safe-bottom {
+    padding-bottom: calc(0.875rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Focus ring for the light Figma surfaces. */
+  .focus-ring-fig {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fig-blue focus-visible:ring-offset-2 focus-visible:ring-offset-white;
+  }
+
+  /* Focus ring for controls floating on the light map, where there is no
+     reliable solid offset colour behind the ring. */
+  .focus-ring-fig-map {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fig-blue focus-visible:ring-offset-0;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Figma / Apple sheet glass.                                          *
+ *                                                                     *
+ * Figma's Fill (`1204:81411`) uses `color-dodge` over rgba(15,15,15).  *
+ * Inside a CSS backdrop-filter root that blend has no map to dodge    *
+ * against and resolves muddy/dark — the same failure mode that made   *
+ * `.fig-circle-button` abandon color-dodge.                           *
+ *                                                                     *
+ * So the material is the Apple frosted-glass resolution of that       *
+ * intent: light translucent plate, strong blur + saturate so the map  *
+ * reads through, hairline highlight, soft shadow. No dodge layers.    *
+ * ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ *
+ * Glass materials                                                     *
+ *                                                                     *
+ * Figma composes glass from color-dodge + translucent fills. CSS      *
+ * backdrop-filter roots cannot resolve dodge (it muddies), so we use  *
+ * Apple frosted glass: translucent white, saturate + strong blur,     *
+ * hairline highlight, soft shadow. Never put `filter:` on these — it  *
+ * creates a stacking context that kills backdrop-filter.              *
+ * ------------------------------------------------------------------ */
+
+/* No `position` here — consumers pin with `absolute` / `relative`. */
+.fig-sheet {
+  background: rgba(255, 255, 255, 0.68);
+  -webkit-backdrop-filter: saturate(180%) blur(40px);
+  backdrop-filter: saturate(180%) blur(40px);
+  box-shadow:
+    0 4px 32px rgba(0, 0, 0, 0.12),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.85);
+  border: 0.5px solid rgba(255, 255, 255, 0.45);
+}
+
+/*
+ * During sheet-stack slide/scale, blur is recomputed every frame and stutters.
+ * Swap to an opaque-enough plate for the 500 ms presentation, then restore.
+ */
+.fig-sheet[data-sheet-motion="active"] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+/* Kept as an empty hook so call sites stay stable; fill layers that
+   darkened the glass were removed (see comment above). */
+.fig-sheet-fill {
+  display: none;
+}
+
+/* Shared Apple glass for map chrome — route pill, circle buttons, status
+   chips. Same recipe as `.fig-sheet`, tuned slightly clearer for small
+   controls so labels stay sharp over the map. */
+.fig-glass {
+  background: rgba(255, 255, 255, 0.58);
+  -webkit-backdrop-filter: saturate(180%) blur(28px);
+  backdrop-filter: saturate(180%) blur(28px);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.1),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.9);
+  border: 0.5px solid rgba(255, 255, 255, 0.55);
+}
+
+/* Circular map button — no `position` (callers use absolute / flex). */
+.fig-circle-button {
+  background: rgba(255, 255, 255, 0.58);
+  -webkit-backdrop-filter: saturate(180%) blur(28px);
+  backdrop-filter: saturate(180%) blur(28px);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.1),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.9);
+  border: 0.5px solid rgba(255, 255, 255, 0.55);
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.fig-circle-button:hover {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+/* Route header pill — frosted glass over the map. */
+.fig-route-pill {
+  background: rgba(255, 255, 255, 0.58);
+  -webkit-backdrop-filter: saturate(180%) blur(28px);
+  backdrop-filter: saturate(180%) blur(28px);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.1),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.9);
+  border: 0.5px solid rgba(255, 255, 255, 0.55);
+}
+
+/* Assistant prompt — Figma `1213:77769`: soft white plate, 12 px blur. */
+.fig-prompt-input {
+  background-image:
+    linear-gradient(90deg, rgba(245, 243, 255, 0.18), rgba(245, 243, 255, 0.18)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.82));
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 12px rgba(16, 24, 40, 0.04);
+  border: 1px solid #ffffff;
+}
+
+/*
+ * Thread footer glass — frost sits under the composer only.
+ * Soften just the top seam (~12 px); do not veil the last bubble above.
+ */
+.fig-thread-footer {
+  -webkit-backdrop-filter: blur(25px);
+  backdrop-filter: blur(25px);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.78) 14%,
+    rgba(255, 255, 255, 0.82) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 12px,
+    #000 100%
+  );
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 12px, #000 100%);
+}
+
+/* Status / suggestion chips floating on the map. */
+.fig-status-pill {
+  background: rgba(255, 255, 255, 0.58);
+  -webkit-backdrop-filter: saturate(180%) blur(28px);
+  backdrop-filter: saturate(180%) blur(28px);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.9);
+  border: 0.5px solid rgba(255, 255, 255, 0.55);
+}
+
+/* Scrim behind the iOS status bar so the time stays legible over the map. */
+.fig-statusbar-scrim {
+  background: linear-gradient(
+    180deg,
+    rgba(217, 217, 217, 0.26) 0%,
+    rgba(217, 217, 217, 0) 100%
+  );
+}
+
+@layer utilities {
+  /* SF Pro's optical weights. Figma reports 590 (Semibold) and 510 (Medium);
+     variable SF Pro honours these exactly, and the Inter fallback rounds to
+     600/500. */
+  .fig-w-semibold {
+    font-weight: 590;
+  }
+  .fig-w-medium {
+    font-weight: 510;
+  }
+  .fig-title {
+    font-size: 20px;
+    line-height: normal;
+    letter-spacing: -0.6px;
+    font-weight: 590;
+  }
+
+  /* Ticket notch — a punched circle on the left/right edge of a pass. */
+  .ticket-notch {
+    @apply absolute h-4 w-4 rounded-full bg-canvas;
+  }
+}
+
+/* Mapbox attribution.
+   Required by Mapbox terms, so it is never hidden. It sits at the bottom of
+   whichever map container owns it; a screen whose bottom edge is covered can
+   raise it by setting --dock-height on that container. */
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-bottom-right {
+  bottom: calc(var(--dock-height, 0px) + 6px);
+  z-index: 2;
+  transition: bottom 260ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.mapboxgl-ctrl-logo {
+  opacity: 0.55;
+}
+
+/* Tuned for the light basemap: a pale chip with dark links, so the credit reads
+   without turning into the heaviest element on a pale map. */
+.mapboxgl-ctrl-attrib.mapboxgl-compact {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.mapboxgl-ctrl-attrib.mapboxgl-compact-show {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.mapboxgl-ctrl-attrib a {
+  color: rgba(16, 24, 40, 0.62);
+}
+
+.mapboxgl-ctrl-attrib.mapboxgl-compact .mapboxgl-ctrl-attrib-button {
+  background-color: rgba(16, 24, 40, 0.55);
+}
+
+/* At full size the credit would own a third of the 300x168 preview, so it is
+   scaled into the corner it shares with the expand control. */
+[data-map-variant="mini"] .mapboxgl-ctrl-bottom-left {
+  transform: scale(0.68);
+  transform-origin: bottom left;
+}
+
+/* The map is context, never a surface to select text on or drag. */
+.mapboxgl-canvas {
+  outline: none;
+}
+
+/* ------------------------------------------------------------------ *
+ * Stage starfield — assistant / no-session desktop atmosphere.        *
+ * Tuned to Mapbox fog space-color `rgb(11,11,25)` + star intensity,   *
+ * without the globe that competed with the opaque phone.              *
+ * ------------------------------------------------------------------ */
+.stage-starfield {
+  background: #080a18;
+}
+
+.stage-starfield__wash {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 42%, rgba(36, 92, 223, 0.22) 0%, transparent 58%),
+    radial-gradient(ellipse 60% 50% at 18% 78%, rgba(88, 70, 180, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 82% 18%, rgba(0, 136, 255, 0.1) 0%, transparent 50%),
+    #0b0b19;
+}
+
+.stage-starfield__dust {
+  opacity: 0.55;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 28% 62%, rgba(255, 255, 255, 0.35) 50%, transparent 51%),
+    radial-gradient(1px 1px at 44% 28%, rgba(255, 255, 255, 0.45) 50%, transparent 51%),
+    radial-gradient(1px 1px at 61% 74%, rgba(255, 255, 255, 0.3) 50%, transparent 51%),
+    radial-gradient(1px 1px at 77% 36%, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1px 1px at 89% 58%, rgba(255, 255, 255, 0.28) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 8% 48%, rgba(190, 220, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 52% 12%, rgba(190, 220, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 70% 88%, rgba(190, 220, 255, 0.35) 50%, transparent 51%);
+  background-size: 100% 100%;
+}
+
+.stage-starfield__stars {
+  background-repeat: repeat;
+  background-size: 420px 420px;
+  opacity: 0.7;
+}
+
+.stage-starfield__stars--a {
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, 0.85) 50%, transparent 51%),
+    radial-gradient(1px 1px at 80px 120px, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 160px 60px, rgba(255, 255, 255, 0.7) 50%, transparent 51%),
+    radial-gradient(1px 1px at 240px 200px, rgba(255, 255, 255, 0.45) 50%, transparent 51%),
+    radial-gradient(1px 1px at 300px 90px, rgba(255, 255, 255, 0.65) 50%, transparent 51%),
+    radial-gradient(1px 1px at 360px 280px, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 120px 300px, rgba(200, 220, 255, 0.75) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 280px 40px, rgba(200, 220, 255, 0.55) 50%, transparent 51%);
+  animation: stage-starfield-drift 80s linear infinite;
+}
+
+.stage-starfield__stars--b {
+  opacity: 0.45;
+  background-size: 560px 560px;
+  background-image:
+    radial-gradient(1px 1px at 40px 80px, rgba(255, 255, 255, 0.7) 50%, transparent 51%),
+    radial-gradient(1px 1px at 140px 180px, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1px 1px at 220px 40px, rgba(255, 255, 255, 0.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 320px 260px, rgba(255, 255, 255, 0.35) 50%, transparent 51%),
+    radial-gradient(1px 1px at 400px 140px, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(2px 2px at 180px 320px, rgba(180, 210, 255, 0.5) 50%, transparent 51%);
+  animation: stage-starfield-drift 120s linear infinite reverse;
+}
+
+.stage-starfield__veil {
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 50%,
+    transparent 35%,
+    rgba(8, 10, 24, 0.45) 100%
+  );
+}
+
+@keyframes stage-starfield-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-420px, -210px, 0);
+  }
+}
+
+@keyframes stage-map-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion: kill decorative animation, keep state changes instant and
+   legible. Framer Motion components additionally branch on useReducedMotion()
+   so morphs become fades rather than 0.001ms morphs. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

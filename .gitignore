@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-ssr
+
+# Local environment. `*.local` already covers .env.local; listed explicitly so
+# it is obvious that the token file must never be committed.
+*.local
+.env.local
+.env.*.local
+
+.DS_Store
+.vscode/
+.idea/
+*.log

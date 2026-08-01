@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"/Users/uixchef/Desktop/UIX Chef/Cursor/Travel agent\" && find . -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.md\" -o -name \"*.css\" -o -name \"*.json\" -o -name \"*.js\" -o -name \"*.html\" \\\\\\) -not -path \"./node_modules/*\" -not -path \"./.git/*\" -not -path \"./.aw/*\" -not -path \"./.claude/*\" -not -path \"./dist/*\" | head -100)",
+      "Read(//Users/uixchef/.aw/**)"
+    ]
+  }
+}
