@@ -17,7 +17,9 @@ import { initialModel, reducer } from "./state/machine";
 import type { AgentState } from "./state/machine";
 import {
   canonicalSlug,
+  clearSheetInUrl,
   setStateInUrl,
+  sheetFromUrl,
   slugFromUrl,
   slugToLink,
 } from "./state/demoStates";
@@ -58,8 +60,20 @@ export function App() {
     return slug === "ticket";
   });
   const [tripSheetOpen, setTripSheetOpen] = useState(false);
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [caseDetailsOpen, setCaseDetailsOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return (
+      sheetFromUrl() === "payment-method" && slugFromUrl() === "confirmation"
+    );
+  });
+  const [caseDetailsOpen, setCaseDetailsOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const slug = slugFromUrl();
+    return (
+      sheetFromUrl() === "case-details" &&
+      (slug === "handoff" || slug === "support")
+    );
+  });
   const [specialistChatOpen, setSpecialistChatOpen] = useState(() => {
     const slug = typeof window !== "undefined" ? slugFromUrl() : null;
     return slug ? slugToLink[slug]?.surface === "specialistChat" : false;
@@ -130,6 +144,17 @@ export function App() {
       if (link.agentState === "alternatives") setRefineStartsWithResults(true);
       if (link.agentState === "adjust_request") setRefineStartsWithResults(false);
       if (link.surface === "specialistChat") setSpecialistChatOpen(true);
+
+      const sheet = sheetFromUrl();
+      if (sheet === "payment-method" && link.agentState === "confirmation") {
+        setPaymentOpen(true);
+      }
+      if (
+        sheet === "case-details" &&
+        link.agentState === "escalation_partial_transaction"
+      ) {
+        setCaseDetailsOpen(true);
+      }
     },
     [closeAllSheets],
   );
@@ -330,7 +355,10 @@ export function App() {
 
       <PaymentMethodSheet
         open={paymentOpen}
-        onClose={() => setPaymentOpen(false)}
+        onClose={() => {
+          setPaymentOpen(false);
+          clearSheetInUrl();
+        }}
         selectedId={model.paymentMethodId}
         onSelect={(id) => {
           dispatch({ type: "SET_PAYMENT_METHOD", paymentMethodId: id });
@@ -343,7 +371,10 @@ export function App() {
 
       <CaseDetailsSheet
         open={caseDetailsOpen}
-        onClose={() => setCaseDetailsOpen(false)}
+        onClose={() => {
+          setCaseDetailsOpen(false);
+          clearSheetInUrl();
+        }}
         entries={caseEntries}
       />
 

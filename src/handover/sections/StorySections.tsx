@@ -36,22 +36,25 @@ export function ProposalStory() {
             screen: SCREENS.assistant,
             body: (
               <p>
-                The user’s timing, budget, seat preference, and travel date become
-                explicit and editable — so the recommendation can be audited against
-                the request.
+                The original request becomes an explicit, editable brief: arrive
+                before 18:00, keep the extra cost under ₹5,000, and avoid a middle
+                seat. Those constraints are what the recommendation will be audited
+                against.
               </p>
             ),
           },
           {
             id: "recommend",
-            label: "step 2 · recommendation",
+            label: "step 2 · recommendation rationale",
             title: "Why this option",
             screen: SCREENS.proposal,
             body: (
               <p>
-                AI 639 is recommended because it arrives at 16:00, stays ₹210 below
-                the limit, keeps a window seat, and is the earliest matching nonstop
-                flight — while AI 621 remains booked until the replacement is issued.
+                AI 639 is recommended because it arrives at 16:00, costs ₹4,790
+                extra (₹210 below the ₹5,000 search limit), keeps a window seat, and
+                is the earliest matching nonstop. AI 621 remains active until AI 639
+                is successfully issued. ₹5,000 is the search limit; ₹4,790 is the
+                exact amount proposed for this transaction.
               </p>
             ),
           },
@@ -62,8 +65,9 @@ export function ProposalStory() {
             screen: SCREENS.alternatives,
             body: (
               <p>
-                The user can compare another flight, adjust the brief, or keep AI
-                621 — without surrendering agency to the recommendation.
+                Other Options, constraint adjustment, and comparison stay available.
+                The user can keep AI 621. They remain in control throughout the
+                decision.
               </p>
             ),
           },
@@ -98,19 +102,29 @@ export function ConfirmationStory() {
 
       <Reveal className="vx-seal">
         <blockquote className="vx-seal-quote">
-          <p className="vx-seal-kicker">What the agent is allowed to say</p>
+          <p className="vx-seal-kicker">Approval boundary</p>
           <p className="vx-seal-utterance">
             <span className="vx-seal-mark" aria-hidden="true">
               “
             </span>
-            I’ll only rebook {SCENARIO.recommended.flightNo}, seat{" "}
-            {SCENARIO.recommended.seat}, for a total of {SCENARIO.recommended.extra}.
-            If the flight, seat, or price changes, I’ll stop and ask again.
+            I’ll only rebook {SCENARIO.recommended.flightNo} for{" "}
+            {SCENARIO.passenger}, departing at {SCENARIO.recommended.depart}, with
+            seat {SCENARIO.recommended.seat}, for a total of{" "}
+            {SCENARIO.recommended.extra} on {SCENARIO.success.payment}. If any
+            material booking or payment detail changes, I’ll stop and ask again.
             <span className="vx-seal-mark" aria-hidden="true">
               ”
             </span>
           </p>
         </blockquote>
+        <p className="vx-seal-note">
+          ₹5,000 is the user’s search limit. ₹4,790 is the exact amount approved for
+          this transaction. The search limit helps identify eligible options; it does
+          not give the agent authority to spend any amount below ₹5,000. The
+          prototype confirmation UI uses a shorter spoken line for the same bound
+          approval: passenger, airline, flight, route, date, times, seat, baggage,
+          fare class, payable amount, and payment method.
+        </p>
 
         <aside className="vx-seal-ticket" aria-label="Approval object">
           <p className="vx-seal-kicker">Exact approval</p>
@@ -134,6 +148,10 @@ export function ConfirmationStory() {
             </div>
             <dl className="vx-seal-terms">
               <div>
+                <dt>Passenger</dt>
+                <dd>{SCENARIO.passenger}</dd>
+              </div>
+              <div>
                 <dt>Payable</dt>
                 <dd>{SCENARIO.recommended.extra}</dd>
               </div>
@@ -143,7 +161,7 @@ export function ConfirmationStory() {
               </div>
               <div>
                 <dt>Until issue</dt>
-                <dd>{SCENARIO.current.flightNo} stays active</dd>
+                <dd>{SCENARIO.current.flightNo} remains active</dd>
               </div>
             </dl>
           </div>
@@ -163,7 +181,7 @@ export function ConfirmationStory() {
               <ul className="vx-anno">
                 <li>Current versus replacement is visible</li>
                 <li>“Pay ₹4,790 & rebook” names action and consequence</li>
-                <li>Original ticket stays protected until issuance</li>
+                <li>AI 621 remains active until AI 639 is issued</li>
                 <li>Safe order: recheck → issue → release</li>
               </ul>
             ),
@@ -175,10 +193,10 @@ export function ConfirmationStory() {
             screen: SCREENS.payment,
             body: (
               <ul className="vx-anno">
-                <li>Payment method is explicit</li>
-                <li>Changing payment invalidates approval</li>
+                <li>Payment method is an approved attribute</li>
+                <li>Changing payment invalidates the previous approval</li>
                 <li>User can return and adjust</li>
-                <li>Keep AI 621 remains a valid outcome</li>
+                <li>Keeping AI 621 remains a valid outcome</li>
               </ul>
             ),
           },
@@ -190,6 +208,12 @@ export function ConfirmationStory() {
               className="vx-btn vx-btn-primary"
             >
               Open confirmation
+            </ProtoLink>
+            <ProtoLink
+              href={protoHref("confirmation", "payment-method")}
+              className="vx-btn vx-btn-secondary"
+            >
+              Open payment method
             </ProtoLink>
           </CtaRow>
         }
@@ -217,20 +241,24 @@ export function RepairStory() {
       <ScrollStack className="vx-repair-stack">
         <article className="vx-repair-case vx-stack-card">
           <div className="vx-repair-copy">
-            <p className="vx-eyebrow">[ case 01 · AI misread ]</p>
+            <p className="vx-eyebrow">[ case 01 · interpretation correction ]</p>
             <h3>Repair the smallest possible unit</h3>
             <p>
-              When the agent misunderstands a constraint, it should correct that
-              unit — not restart the trip or touch booking and payment.
+              The agent interpreted 18:00 as an arrival deadline. The user intended
+              it as a departure deadline. That is an interpretation mismatch, not a
+              booking failure. The agent acknowledges the mismatch, confirms that no
+              booking or payment change occurred, corrects one constraint, preserves
+              the remaining brief, and searches again without restarting the
+              conversation.
             </p>
             <ul className="vx-anno">
-              <li>Acknowledge the error</li>
+              <li>Acknowledge the mismatch</li>
               <li>Preserve unaffected constraints</li>
               <li>No booking or payment changes</li>
               <li>Search again without restarting</li>
             </ul>
             <ProtoLink href={protoHref("misread")} className="vx-btn vx-btn-secondary">
-              Open AI misread
+              Open interpretation correction
             </ProtoLink>
           </div>
           <div className="vx-repair-visual">
@@ -248,20 +276,25 @@ export function RepairStory() {
               <strong>{SCENARIO.priceChange.next}</strong>
             </p>
             <p>
-              The previous approval is cleared. Nothing was charged. AI 621 stays
-              active while the user chooses again.
+              The fare changed from ₹4,790 to ₹6,240, so the exact earlier approval
+              no longer applies. Nothing was charged. AI 621 remains active while the
+              user chooses again.
             </p>
             <ul className="vx-anno">
-              <li>Previous approval is invalidated</li>
-              <li>Nothing charged · original ticket protected</li>
+              <li>The previous approval is invalidated</li>
+              <li>Nothing was charged · AI 621 remains active</li>
               <li>Find another, keep AI 621, or approve ₹6,240</li>
             </ul>
             <ProtoLink
               href={protoHref("price-change")}
               className="vx-btn vx-btn-secondary"
             >
-              Open price change
+              Open fare-change repair
             </ProtoLink>
+            <p className="vx-repair-via">
+              Higher-price reconfirmation for ₹6,240 is reached from this repair
+              state in the prototype.
+            </p>
           </div>
           <div className="vx-repair-visual is-pair" aria-label="Fare-change screens">
             <ScreenFigure screen={SCREENS.priceChanged} size="story" />
@@ -326,8 +359,9 @@ export function HandoffSection() {
           can increase harm.
         </h2>
         <p className="vx-lede">
-          Case {SCENARIO.handoff.caseId} opens the moment payment and ticketing
-          disagree — with every safe state still intact.
+          Case {SCENARIO.handoff.caseId} opens when payment is authorised but the
+          replacement ticket is not issued. AI 621 remains active and automatic
+          retries are paused.
         </p>
       </Reveal>
 
@@ -345,15 +379,15 @@ export function HandoffSection() {
           {
             id: "stop",
             eyebrow: "[ 01 · the stop ]",
-            title: "Payment and ticketing no longer agree",
-            body: `Another automated attempt could produce a duplicate authorisation, charge, or ticket. Case ${SCENARIO.handoff.caseId} is created.`,
+            title: "Payment authorised, ticket not issued",
+            body: `Payment was authorised, but the replacement ticket was not issued. Because another automated attempt could create a duplicate authorisation or duplicate ticket, the agent stops and transfers the case to a specialist. Case ${SCENARIO.handoff.caseId} is created with ₹4,790 authorised on Visa •••• 1842, not captured; AI 639 not issued; and AI 621 still active.`,
             screen: SCREENS.handoff,
           },
           {
             id: "context",
             eyebrow: "[ 02 · context transferred ]",
             title: "The specialist already has the file",
-            body: "Original request, constraints, selected flight, approval, payment status, ticket status, and automated attempts travel with the handoff.",
+            body: "Original request, constraints, selected flight, approval, payment status, ticket status, and automated attempts travel with the handoff so Priya does not start from zero.",
             screen: SCREENS.caseDetails,
           },
           {
@@ -400,7 +434,7 @@ export function HandoffSection() {
           <p className="vx-map-kicker">May stay automated</p>
           <h3>Automation may repair</h3>
           <ul>
-            <li>Misinterpreted request</li>
+            <li>Interpretation mismatch before payment</li>
             <li>Unavailable option before payment</li>
             <li>Fare or seat change before payment</li>
             <li>Known failure with no side effects</li>
@@ -425,6 +459,12 @@ export function HandoffSection() {
         <ProtoLink href={protoHref("support")} className="vx-btn vx-btn-secondary">
           Open Priya conversation
         </ProtoLink>
+        <ProtoLink
+          href={protoHref("handoff", "case-details")}
+          className="vx-btn vx-btn-secondary"
+        >
+          Open case details
+        </ProtoLink>
       </CtaRow>
     </section>
   );
@@ -447,7 +487,10 @@ export function ExecutionSection() {
           { title: "Recheck", detail: "Fare and seat still match approval" },
           { title: "Secure", detail: "AI 639 and seat 12A held" },
           { title: "Issue", detail: "Replacement ticket confirmed" },
-          { title: "Release", detail: "AI 621 cancelled only after issue" },
+          {
+            title: "Release",
+            detail: "AI 621 remains active until issued; released only after success",
+          },
         ].map((step, index) => (
           <li key={step.title}>
             <span className="vx-safe-order-num" aria-hidden="true">
@@ -465,20 +508,51 @@ export function ExecutionSection() {
         <Reveal className="vx-feature-card">
           <ScreenFigure screen={SCREENS.executing} size="card" />
           <h3>Execution</h3>
-          <p>The order is visible.</p>
+          <div className="vx-feature-card-body">
+            <p>
+              The transaction is currently running: rechecking fare and seat,
+              securing AI 639 and seat 12A, issuing the replacement, then releasing
+              AI 621.
+            </p>
+            <ProtoLink
+              href={protoHref("executing")}
+              className="vx-btn vx-btn-secondary vx-btn-sm"
+            >
+              Open execution
+            </ProtoLink>
+          </div>
         </Reveal>
         <Reveal className="vx-feature-card" delay={0.06}>
           <ScreenFigure screen={SCREENS.success} size="card" />
           <h3>Success</h3>
-          <p>
-            Booking {SCENARIO.success.bookingRef}, seat, charge, and released ticket
-            are immediately verifiable.
-          </p>
+          <div className="vx-feature-card-body">
+            <p>
+              The rebooking has completed. Booking {SCENARIO.success.bookingRef},
+              seat 12A, {SCENARIO.success.charged}, and AI 621 released.
+            </p>
+            <ProtoLink
+              href={protoHref("success")}
+              className="vx-btn vx-btn-secondary vx-btn-sm"
+            >
+              Open success
+            </ProtoLink>
+          </div>
         </Reveal>
         <Reveal className="vx-feature-card" delay={0.12}>
           <ScreenFigure screen={SCREENS.boarding} size="card" />
           <h3>Boarding pass</h3>
-          <p>The transaction ends with a usable travel object and activity history.</p>
+          <div className="vx-feature-card-body">
+            <p>
+              The issued travel object and activity record are available, including
+              original booking released.
+            </p>
+            <ProtoLink
+              href={protoHref("ticket")}
+              className="vx-btn vx-btn-secondary vx-btn-sm"
+            >
+              Open boarding pass
+            </ProtoLink>
+          </div>
         </Reveal>
       </div>
     </section>
@@ -503,12 +577,15 @@ export function DecisionsAccordion() {
       <div className="vx-accordion">
         {DECISIONS.map((decision, index) => {
           const isOpen = open === index;
+          const panelId = `decision-panel-${index}`;
           return (
             <div key={decision.title} className={isOpen ? "vx-acc-row is-open" : "vx-acc-row"}>
               <button
                 type="button"
                 className="vx-acc-trigger"
                 aria-expanded={isOpen}
+                aria-controls={panelId}
+                id={`decision-trigger-${index}`}
                 onClick={() => setOpen(isOpen ? null : index)}
               >
                 <span className="vx-acc-num">{String(index + 1).padStart(3, "0")}</span>
@@ -520,6 +597,9 @@ export function DecisionsAccordion() {
               <AnimatePresence initial={false}>
                 {isOpen ? (
                   <m.div
+                    id={panelId}
+                    role="region"
+                    aria-labelledby={`decision-trigger-${index}`}
                     className="vx-acc-panel"
                     initial={reduce ? false : { height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
@@ -535,7 +615,7 @@ export function DecisionsAccordion() {
                             href={protoHref("rejected")}
                             className="vx-btn vx-btn-primary vx-btn-sm"
                           >
-                            Open rejection state
+                            Open kept-current-flight state
                           </ProtoLink>
                         </>
                       ) : null}
@@ -560,9 +640,9 @@ export function PartTwoSection() {
       <Reveal className="vx-section-head">
         <p className="vx-eyebrow">[ part 2 · funnel diagnosis ]</p>
         <h2 id="part-2-heading" className="vx-display">
-          Step 3 is where
+          Step 3 creates the
           <br />
-          the funnel breaks.
+          largest loss in the funnel.
         </h2>
       </Reveal>
 
@@ -571,9 +651,13 @@ export function PartTwoSection() {
           <p className="vx-diag-stat">{focusStep?.complete ?? "61%"}</p>
           <div className="vx-diag-signal-copy">
             <h3>{focusStep?.name ?? "ID document upload"}</h3>
-            <p>~29,100 of {focusStep?.entering ?? "74,600"} lost</p>
+            <p>
+              {focusStep?.entering ?? "74,600"} users entering · approximately 29,100
+              lost
+            </p>
             <p className="vx-diag-hypothesis">
-              Hypothesis: first-attempt capture failures.
+              Hypothesis: capture-quality or unsupported-document failures, followed
+              by generic rejection, cause repeated attempts and abandonment.
             </p>
           </div>
         </div>
@@ -615,7 +699,14 @@ export function PartTwoSection() {
             <span>Variant · guided capture</span>
           </p>
           <p className="vx-diag-metric">
-            Primary · Step 3 completion → 70–73%
+            Primary metric: Step 3 completion rate. Directional target: increase
+            completion from 61% to approximately 70% to 73%. This is a directional
+            target, not a guaranteed result.
+          </p>
+          <p className="vx-diag-metric is-soft">
+            Quality guardrails: manual-review rate, document rejection, fraud
+            indicators, false acceptance risk. Downstream activation: first
+            transaction within 7 days (38,000 baseline).
           </p>
         </div>
       </Reveal>
@@ -625,12 +716,18 @@ export function PartTwoSection() {
           type="button"
           className="vx-btn vx-btn-secondary"
           aria-expanded={expanded}
+          aria-controls="part-2-diagnosis-detail"
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? "Hide diagnosis detail" : "Show diagnosis detail"}
         </button>
         {expanded ? (
-          <div className="vx-prose vx-diag-detail">
+          <div
+            id="part-2-diagnosis-detail"
+            className="vx-prose vx-diag-detail"
+            role="region"
+            aria-label="Part 2 diagnosis detail"
+          >
             <header className="vx-diag-detail-head">
               <p className="vx-eyebrow">[ diagnosis detail ]</p>
               <h3>Why Step 3, and what to test</h3>
@@ -638,11 +735,11 @@ export function PartTwoSection() {
 
             <div className="vx-diag-detail-grid">
               <article className="vx-diag-detail-block">
-                <h4>Focus</h4>
+                <h4>What the funnel data proves</h4>
                 <p>
                   Step 3 · ID document upload completes at only 61% and loses
-                  ~29,100 of the 74,600 users entering the step — the largest
-                  percentage and absolute loss in the funnel.
+                  approximately 29,100 of the 74,600 users entering the step. That is
+                  the largest percentage and absolute loss in the funnel.
                 </p>
               </article>
 
@@ -650,31 +747,30 @@ export function PartTwoSection() {
                 <h4>Hypothesis</h4>
                 <p>
                   The funnel shows where users drop, not why. Treat this as a
-                  hypothesis to validate: many users fail first capture from blur,
-                  glare, cropping, missing edges, or an unsupported document. A
-                  generic rejection after upload forces a full retry; after one or
-                  two failures, users abandon.
+                  hypothesis to validate: capture-quality or unsupported-document
+                  failures, followed by generic rejection, cause repeated attempts and
+                  abandonment.
                 </p>
               </article>
 
               <article className="vx-diag-detail-block">
-                <h4>Proposed change</h4>
+                <h4>Proposed intervention</h4>
                 <ol className="vx-diag-detail-steps">
                   <li>
-                    <strong>Before camera</strong>
-                    <span>Select document type and see preparation guidance.</span>
+                    <strong>Document selection</strong>
+                    <span>Choose document type before capture.</span>
                   </li>
                   <li>
-                    <strong>During capture</strong>
-                    <span>Live guidance; auto-capture when readable.</span>
+                    <strong>Preparation guidance</strong>
+                    <span>Show lighting, framing, and edge requirements.</span>
                   </li>
                   <li>
-                    <strong>After capture</strong>
-                    <span>Review before upload; targeted retake on failure.</span>
+                    <strong>Live capture feedback</strong>
+                    <span>Guide during capture; auto-capture when readable.</span>
                   </li>
                   <li>
-                    <strong>Progress</strong>
-                    <span>Save and resume without repeating OTP.</span>
+                    <strong>Review and resume</strong>
+                    <span>Review before upload, targeted retakes, save and resume.</span>
                   </li>
                 </ol>
               </article>
@@ -684,39 +780,57 @@ export function PartTwoSection() {
                 <dl className="vx-diag-detail-metrics">
                   <div>
                     <dt>Primary</dt>
-                    <dd>Step 3 completion rate · directional target 70–73%</dd>
+                    <dd>
+                      Step 3 completion rate. Directional target: approximately 70%
+                      to 73% (about 9 to 12 percentage points). Not a guaranteed
+                      result.
+                    </dd>
                   </div>
                   <div>
                     <dt>Supporting</dt>
                     <dd>
-                      First-attempt success, retakes per user, median completion
-                      time, camera-permission acceptance, save-and-resume usage,
-                      server rejection reasons
+                      First-attempt capture success, retakes per user, median
+                      completion time, camera-permission acceptance, save-and-resume
+                      usage, server rejection reasons
                     </dd>
                   </div>
                   <div>
-                    <dt>Guardrails</dt>
+                    <dt>Quality guardrails</dt>
                     <dd>
-                      Manual-review rate, document rejection rate, fraud
-                      indicators, false acceptance risk, selfie-liveness completion
+                      Manual-review rate, document rejection rate, fraud indicators,
+                      false acceptance risk, selfie-liveness completion
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Downstream activation</dt>
+                    <dd>
+                      Account creation and first transaction within 7 days (38,000
+                      baseline). Used to verify that additional KYC completions lead
+                      to meaningful activation, not as the primary measure of the
+                      capture redesign.
                     </dd>
                   </div>
                   <div>
                     <dt>Segments</dt>
                     <dd>
-                      OS, device quality, document type, camera-permission state,
-                      failure reason
+                      Operating system, device quality, document type,
+                      camera-permission state, failure reason
                     </dd>
                   </div>
                 </dl>
               </article>
 
               <article className="vx-diag-detail-block is-wide">
-                <h4>Test design</h4>
+                <h4>Experiment and attribution</h4>
                 <p>
-                  Run a user-level 50/50 A/B test. Hold constant: KYC provider,
-                  validation rules, eligibility, risk logic, traffic eligibility,
-                  and document acceptance.
+                  Test: user-level 50/50 A/B. Control: current ID-document upload
+                  flow. Variant: document selection, preparation guidance, live
+                  capture feedback, automatic capture when readable, review before
+                  upload, targeted retakes, and save and resume. Hold constant: KYC
+                  provider, backend validation rules, eligibility rules, risk logic,
+                  traffic eligibility, and document-acceptance policy. Distinguish
+                  funnel proof (where loss occurs) from hypothesis, proposed
+                  intervention, directional target, and post-launch measurement.
                 </p>
               </article>
             </div>
@@ -734,7 +848,7 @@ export function ScopeAndCta() {
         <Reveal className="vx-section-head">
           <p className="vx-eyebrow vx-eyebrow-on-dark">[ scope & build ]</p>
           <h2 id="scope-heading" className="vx-display is-on-dark">
-            What this prototype proves,
+            What this prototype demonstrates,
             <br />
             and what it does not.
           </h2>
@@ -764,7 +878,7 @@ export function ScopeAndCta() {
         </div>
 
         <div className="vx-future">
-          <p className="vx-future-badge">Future tests — no results claimed</p>
+          <p className="vx-future-badge">Future tests: no results claimed</p>
           <ul>
             {FUTURE_TESTS.map((test) => (
               <li key={test.name}>
@@ -855,8 +969,8 @@ export function ScopeAndCta() {
               <p className="vx-eyebrow vx-finale-eyebrow">[ prototype directory ]</p>
               <h3>Jump to any state</h3>
               <p>
-                Direct deep links into the working prototype. Each opens in a new
-                tab so you keep your place here.
+                Links to prototype states and their entry points. Each opens in a
+                new tab so you keep your place here.
               </p>
             </div>
             <ProtoLink href={protoHref()} className="vx-btn vx-btn-glass vx-btn-sm">

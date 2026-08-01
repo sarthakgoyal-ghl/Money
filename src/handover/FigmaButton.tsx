@@ -22,7 +22,6 @@ export function FigmaButton({
   const panelId = useId();
   const reduce = useReducedMotion();
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const frameRef = useRef<HTMLDivElement>(null);
   const embedUrl = figmaUrl ? toFigmaEmbedUrl(figmaUrl) : null;
   const title = figmaUrl ? getFigmaFileTitle(figmaUrl) : "Figma file";
   const displayTitle = title.replace(/\s*\|\s*/g, " · ");
@@ -45,23 +44,10 @@ export function FigmaButton({
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      if (document.fullscreenElement) {
-        void document.exitFullscreen().catch(() => undefined);
-      }
     };
   }, [open]);
 
   if (!figmaUrl || !embedUrl) return null;
-
-  const toggleFullscreen = () => {
-    const node = frameRef.current;
-    if (!node) return;
-    if (document.fullscreenElement) {
-      void document.exitFullscreen().catch(() => undefined);
-      return;
-    }
-    void node.requestFullscreen().catch(() => undefined);
-  };
 
   const dock = (
     <AnimatePresence initial={false}>
@@ -96,14 +82,6 @@ export function FigmaButton({
                 <button
                   type="button"
                   className="vx-figma-icon-btn"
-                  aria-label="Toggle fullscreen"
-                  onClick={toggleFullscreen}
-                >
-                  <FullscreenIcon />
-                </button>
-                <button
-                  type="button"
-                  className="vx-figma-icon-btn"
                   aria-label="Close Figma viewer"
                   onClick={() => setOpen(false)}
                 >
@@ -111,7 +89,7 @@ export function FigmaButton({
                 </button>
               </div>
             </div>
-            <div ref={frameRef} className="vx-figma-dock-frame">
+            <div className="vx-figma-dock-frame">
               <iframe
                 title={title}
                 src={embedUrl}
@@ -210,17 +188,6 @@ function ExternalLinkIcon() {
       <path
         fill="currentColor"
         d="M4.5 3.25a.75.75 0 0 0 0 1.5h5.69L3.47 11.47a.75.75 0 1 0 1.06 1.06l6.72-6.72v5.69a.75.75 0 0 0 1.5 0v-7.5A.75.75 0 0 0 12 3.25H4.5Z"
-      />
-    </svg>
-  );
-}
-
-function FullscreenIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M2 6V2h4v1.5H3.5V6H2Zm8-2.5V2h4v4h-1.5V3.5H10ZM3.5 10H2v4h4v-1.5H3.5V10Zm9 2.5H10V14h4v-4h-1.5v2.5Z"
       />
     </svg>
   );

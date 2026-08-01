@@ -62,7 +62,7 @@ export function ScopeSection() {
       </article>
       <article className="is-future">
         <h3>What I would test next</h3>
-        <p className="ho-future-badge">Future tests — no results claimed</p>
+        <p className="ho-future-badge">Future tests: no results claimed</p>
         <ul className="ho-future-rows">
           {FUTURE_TESTS.map((test) => (
             <li key={test.name}>

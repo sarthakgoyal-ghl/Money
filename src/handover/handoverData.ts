@@ -4,8 +4,11 @@
  */
 
 /** Relative prototype URL — never a hardcoded hostname. */
-export function protoHref(slug?: string): string {
-  return slug ? `/?state=${encodeURIComponent(slug)}` : "/";
+export function protoHref(slug?: string, sheet?: string): string {
+  if (!slug) return "/";
+  const params = new URLSearchParams({ state: slug });
+  if (sheet) params.set("sheet", sheet);
+  return `/?${params.toString()}`;
 }
 
 /** Full chapter map for top nav / chapter index. */
@@ -37,13 +40,16 @@ export const NAV_ITEMS_COMPACT = [
 
 export const SCENARIO = {
   request:
-    "My meeting moved. Get me to Bengaluru before 18:00 tomorrow. Keep the extra cost under ₹5,000, and don’t give me a middle seat.",
+    "My meeting moved. Get me to Bengaluru before 18:00 tomorrow. Keep the extra cost under ₹5,000, and don't give me a middle seat.",
+  passenger: "Sarthak G.",
   current: {
     airline: "Air India",
     flightNo: "AI 621",
     route: "BOM → BLR",
     date: "Friday, 14 August",
     times: "20:35 → 22:25",
+    depart: "20:35",
+    arrive: "22:25",
     seat: "14A",
     seatKind: "Window",
     bag: "15 kg checked baggage",
@@ -56,6 +62,8 @@ export const SCENARIO = {
     route: "BOM → BLR",
     date: "Friday, 14 August",
     times: "14:10 → 16:00",
+    depart: "14:10",
+    arrive: "16:00",
     seat: "12A",
     seatKind: "Window",
     bag: "15 kg checked baggage",
@@ -80,8 +88,8 @@ export const SCENARIO = {
     budget: "₹5,000",
   },
   handoff: {
-    payment: "₹4,790 authorised, not captured",
-    ticket: "Not issued",
+    payment: "₹4,790 authorised on Visa •••• 1842, not captured",
+    ticket: "AI 639 not issued",
     current: "AI 621 still active",
     retries: "Paused",
     caseId: "TR-2048",
@@ -90,6 +98,7 @@ export const SCENARIO = {
   success: {
     bookingRef: "Q8M4LX",
     payment: "Visa •••• 1842",
+    charged: "₹4,790 charged to Visa •••• 1842",
   },
 } as const;
 
@@ -110,7 +119,7 @@ export const SCREENS: Record<string, ScreenShot> = {
   },
   proposal: {
     src: "/handover/screens/proposal.webp",
-    alt: "Full-map proposal recommending AI 639 arriving at 16:00 for ₹4,790 extra.",
+    alt: "Full-map proposal recommending AI 639 arriving at 16:00 for ₹4,790 extra while AI 621 remains active.",
     width: 844,
     height: 1744,
   },
@@ -134,43 +143,43 @@ export const SCREENS: Record<string, ScreenShot> = {
   },
   executing: {
     src: "/handover/screens/executing.webp",
-    alt: "Execution progress issuing AI 639 before releasing AI 621.",
+    alt: "In-progress execution: rechecking fare and seat, securing AI 639 seat 12A, issuing the replacement, then releasing AI 621.",
     width: 844,
     height: 1744,
   },
   success: {
     src: "/handover/screens/success.webp",
-    alt: "Success summary You’re rebooked with booking Q8M4LX and seat 12A.",
+    alt: "Success summary You’re rebooked with booking Q8M4LX, seat 12A, ₹4,790 charged, and AI 621 released.",
     width: 844,
     height: 1744,
   },
   boarding: {
     src: "/handover/screens/boarding-pass.webp",
-    alt: "Boarding pass for AI 639 seat 12A with activity trail.",
+    alt: "Boarding pass for AI 639 seat 12A with activity trail showing AI 621 released.",
     width: 844,
     height: 1744,
   },
   priceChanged: {
     src: "/handover/screens/price-changed.webp",
-    alt: "Price changed repair explaining the fare moved to ₹6,240 with AI 621 still active.",
+    alt: "Fare-change repair explaining the fare moved to ₹6,240 with AI 621 still active and nothing charged.",
     width: 844,
     height: 1744,
   },
   higherPrice: {
     src: "/handover/screens/higher-price-confirmation.webp",
-    alt: "Reconfirmation for the new ₹6,240 total after the fare change.",
+    alt: "Higher-price reconfirmation for the new ₹6,240 total after the fare change.",
     width: 844,
     height: 1744,
   },
   misread: {
     src: "/handover/screens/misread.webp",
-    alt: "AI misread repair clarifying arrive versus depart before 18:00.",
+    alt: "Interpretation correction clarifying arrive versus depart before 18:00, with no booking or payment change.",
     width: 844,
     height: 1744,
   },
   handoff: {
     src: "/handover/screens/handoff.webp",
-    alt: "Human handoff sheet for case TR-2048 with payment authorised and ticket not issued.",
+    alt: "Human handoff sheet for case TR-2048 with ₹4,790 authorised on Visa ending 1842, not captured, and AI 639 not issued.",
     width: 844,
     height: 1744,
   },
@@ -182,7 +191,7 @@ export const SCREENS: Record<string, ScreenShot> = {
   },
   caseDetails: {
     src: "/handover/screens/case-details.webp",
-    alt: "Case details showing payment, ticket, and booking status for TR-2048.",
+    alt: "Case details showing payment authorised not captured, AI 639 not issued, and AI 621 still active for TR-2048.",
     width: 844,
     height: 1744,
   },
@@ -208,21 +217,29 @@ export const STATE_LINKS: StateLink[] = [
   { label: "Confirmation", href: protoHref("confirmation"), group: "primary" },
   {
     label: "Payment Method",
-    href: protoHref("confirmation"),
-    note: "Opens confirmation — tap the payment row in-product",
+    href: protoHref("confirmation", "payment-method"),
     group: "primary",
   },
   { label: "Executing", href: protoHref("executing"), group: "primary" },
   { label: "Success", href: protoHref("success"), group: "primary" },
   { label: "Boarding Pass", href: protoHref("ticket"), group: "primary" },
   { label: "Price Changed", href: protoHref("price-change"), group: "repair" },
-  { label: "AI Misread", href: protoHref("misread"), group: "repair" },
+  {
+    label: "Interpretation Correction",
+    href: protoHref("misread"),
+    group: "repair",
+  },
+  {
+    label: "Higher-price reconfirmation via fare change",
+    href: protoHref("price-change"),
+    note: "Opens fare-change repair; continue in-product to reconfirm ₹6,240",
+    group: "repair",
+  },
   { label: "Human Handoff", href: protoHref("handoff"), group: "escalation" },
   { label: "Priya Conversation", href: protoHref("support"), group: "escalation" },
   {
     label: "Case Details",
-    href: protoHref("handoff"),
-    note: "Opens handoff — open case details from that sheet",
+    href: protoHref("handoff", "case-details"),
     group: "escalation",
   },
   {
@@ -242,15 +259,15 @@ export const STATE_LINK_GROUPS = [
 export const PRINCIPLES = [
   {
     title: "Exact approval, not broad authority",
-    body: "The user approves one flight, one seat, one payment method, and one exact total. The agent does not receive general permission to manage the trip.",
+    body: "Approval binds passenger, airline, flight number, route, travel date, departure and arrival times, seat, baggage allowance, fare class, exact payable amount, and payment method. The agent does not receive general permission to spend up to the search limit or manage the trip broadly.",
   },
   {
     title: "The original ticket remains the safety anchor",
-    body: "AI 621 stays active until the replacement ticket is successfully issued.",
+    body: "AI 621 remains active until AI 639 is successfully issued. It is released only after successful issuance.",
   },
   {
     title: "A material change requires a new decision",
-    body: "If the flight, seat, time, fare, baggage, passenger, or payment method changes, the previous approval no longer applies.",
+    body: "A material change to any approved transaction attribute invalidates the previous approval. The agent must stop and ask again.",
   },
   {
     title: "Repair only while the system state is known",
@@ -265,23 +282,23 @@ export const PRINCIPLES = [
 export const DECISIONS = [
   {
     title: "No general delegation",
-    body: "The user approves one exact transaction rather than allowing the agent to broadly manage the trip.",
+    body: "In confirmation, the CTA names one flight, one seat, one payment method, and one exact total. That is deliberate: the search limit of ₹5,000 only filters options; it is not spend authority.",
   },
   {
     title: "No automatic retry after a partial transaction",
-    body: "Once payment and ticketing disagree, speed is less important than preventing a second financial side effect.",
+    body: "In the handoff case, payment is authorised but AI 639 is not issued. Another automated attempt could create a duplicate authorisation or ticket, so retries pause and the case moves to a specialist.",
   },
   {
-    title: "No fake undo",
-    body: "Rebooking again may involve a different fare, seat, fee, or availability check. Calling that an Undo would misrepresent the system.",
+    title: "No misleading undo",
+    body: "Rebooking again may require a different fare, seat, fee, or availability check. Calling that an Undo would misrepresent the actual system behaviour.",
   },
   {
     title: "The current booking remains visible",
-    body: "The original ticket remains the user’s safety anchor throughout proposal, confirmation, execution, failure, and handoff.",
+    body: "Across proposal, confirmation, fare-change repair, execution, and handoff, AI 621 remains active and seat 14A stays retained until a replacement is issued.",
   },
   {
-    title: "Rejection is a successful outcome",
-    body: "Keeping AI 621 is not an error or abandonment. It is a valid user decision.",
+    title: "Keeping the current flight is a valid outcome",
+    body: "Keeping AI 621 is not an error or abandonment. It is an explicit user decision that leaves the original booking unchanged.",
   },
 ] as const;
 
@@ -314,7 +331,7 @@ export const FUTURE_TESTS = [
   {
     name: "Material-change trust",
     question:
-      "After the fare changes, do users understand that the old approval no longer applies and that nothing was charged?",
+      "After the fare changes, do users understand that the previous approval is invalidated and that nothing was charged?",
   },
   {
     name: "Repair quality",

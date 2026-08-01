@@ -124,8 +124,8 @@ export function SkyAtmosphere() {
   );
   const cloudsFromScope = useTransform(
     scopeProgress,
-    [0, 0.08, 0.22, 0.5, 1],
-    [1, 0.45, 0.12, 0.08, 0.08],
+    [0, 0.01, 0.06, 0.15, 1],
+    [1, 0.2, 0.05, 0.02, 0.02],
   );
   const cloudOpacity = useTransform(
     [cloudsFromPage, cloudsFromScope],
@@ -133,22 +133,27 @@ export function SkyAtmosphere() {
   );
   const galaxyFromPage = useTransform(
     scrollYProgress,
-    [0, 0.9, 0.94, 0.98, 1],
-    [0, 0, 0.55, 0.92, 0.95],
+    [0, 0.88, 0.92, 0.96, 1],
+    [0, 0, 0.7, 0.95, 0.98],
   );
+  // Snap night on as soon as Scope enters the viewport.
   const galaxyFromScope = useTransform(
     scopeProgress,
-    [0, 0.05, 0.18, 0.4, 1],
-    [0, 0.35, 0.9, 0.96, 0.96],
+    [0, 0.01, 0.05, 0.12, 1],
+    [0, 0.9, 0.98, 1, 1],
   );
   const galaxyOpacity = useTransform(
     [galaxyFromPage, galaxyFromScope],
     ([page, scope]: number[]) => Math.max(page ?? 0, scope ?? 0),
   );
-  const veilOpacity = useTransform(
+  const veilFromPage = useTransform(
     scrollYProgress,
     [0, 0.88, 0.94, 1],
     [0.55, 0.5, 0.22, 0.14],
+  );
+  const veilOpacity = useTransform(
+    [veilFromPage, galaxyOpacity],
+    ([veil, galaxy]: number[]) => (veil ?? 0) * (1 - Math.min(galaxy ?? 0, 1)),
   );
 
   return (

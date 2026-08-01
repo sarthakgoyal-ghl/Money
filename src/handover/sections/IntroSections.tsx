@@ -72,9 +72,9 @@ export function TensionSection() {
         </Reveal>
 
         <div className="vx-tension-rail vx-overview-rail" aria-hidden="true">
-          <span>Too slow to trust</span>
+          <span>Too much friction</span>
           <span className="vx-tension-rail-track" />
-          <span>Too fast to trust</span>
+          <span>Too little friction</span>
         </div>
 
         <div className="vx-float-stage" aria-label="Trust friction spectrum">

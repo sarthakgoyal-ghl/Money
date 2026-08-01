@@ -139,12 +139,25 @@ export function canonicalSlug(state: AgentState): string | null {
   );
 }
 
+/** Nested sheet overlays opened via `?sheet=` on an existing state. */
+export type DemoSheet = "payment-method" | "case-details";
+
+const DEMO_SHEETS = new Set<string>(["payment-method", "case-details"]);
+
 /** The `?state=` slug in the current URL, if it names a known state. */
 export function slugFromUrl(): string | null {
   if (typeof window === "undefined") return null;
   const slug = new URLSearchParams(window.location.search).get("state");
   if (!slug) return null;
   return slug in slugToState ? slug : null;
+}
+
+/** Nested sheet from `?sheet=`, when it names a known overlay. */
+export function sheetFromUrl(): DemoSheet | null {
+  if (typeof window === "undefined") return null;
+  const sheet = new URLSearchParams(window.location.search).get("sheet");
+  if (!sheet || !DEMO_SHEETS.has(sheet)) return null;
+  return sheet as DemoSheet;
 }
 
 export function setStateInUrl(slug: string | null): void {
@@ -155,5 +168,15 @@ export function setStateInUrl(slug: string | null): void {
   } else {
     url.searchParams.delete("state");
   }
+  // Leave `sheet` alone so deep-linked overlays survive state sync.
+  window.history.replaceState({}, "", url.toString());
+}
+
+/** Clear nested sheet param without changing `state`. */
+export function clearSheetInUrl(): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("sheet")) return;
+  url.searchParams.delete("sheet");
   window.history.replaceState({}, "", url.toString());
 }

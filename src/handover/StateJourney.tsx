@@ -31,25 +31,31 @@ const EXITS = [
   {
     title: "Reject",
     from: "Proposal / Confirmation",
-    summary: "Keeping AI 621 is a valid outcome — not a failure.",
+    summary: "Keeping AI 621 is a valid outcome. It is not a failure.",
     nodes: [
       { label: "Keep AI 621", href: protoHref("rejected"), tone: "safe" as Tone },
       { label: "No changes made", tone: "safe" as Tone },
     ],
   },
   {
-    title: "AI misread",
+    title: "Interpretation correction",
     from: "Proposal",
-    summary: "Correct one misunderstood constraint and search again.",
+    summary:
+      "The agent’s interpretation differed from the intended constraint. Correct one unit and search again.",
     nodes: [
-      { label: "Incorrect constraint", href: protoHref("misread"), tone: "change" as Tone },
+      {
+        label: "Constraint clarification",
+        href: protoHref("misread"),
+        tone: "change" as Tone,
+      },
       { label: "Correct & search again", tone: "decide" as Tone },
     ],
   },
   {
     title: "Price change",
     from: "Confirmation / Execution",
-    summary: "Old approval dies; a new decision is required before side effects.",
+    summary:
+      "The previous approval is invalidated. A new decision is required before side effects.",
     nodes: [
       { label: "Fare → ₹6,240", href: protoHref("price-change"), tone: "change" as Tone },
       { label: "New decision required", tone: "decide" as Tone },
@@ -58,7 +64,8 @@ const EXITS = [
   {
     title: "Human handoff",
     from: "Execution",
-    summary: "Automation stops when payment and ticket diverge.",
+    summary:
+      "Payment authorised but ticket not issued. Automation stops; AI 621 remains active.",
     nodes: [
       { label: "Payment ≠ ticket", href: protoHref("handoff"), tone: "stop" as Tone },
       { label: "Context → Priya", href: protoHref("support"), tone: "stop" as Tone },
@@ -180,7 +187,7 @@ export function StateJourneySection() {
         <p className="vx-map-alt">
           Text overview: the main path moves from request through proposal,
           confirmation, execution, and success. Users can adjust via Other Options,
-          reject by keeping AI 621, repair an AI misread or fare change before side
+          keep AI 621, repair an interpretation mismatch or fare change before side
           effects, and escalate to Priya when payment is authorised but the
           replacement ticket is not issued.
         </p>
