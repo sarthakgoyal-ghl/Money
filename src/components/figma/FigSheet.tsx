@@ -149,8 +149,14 @@ export function FigSheet({
   const controlled = typeof onHeightChange === "function";
   const [uncontrolledHeight, setUncontrolledHeight] = useState(heightProp);
   const openingHeight = useRef(heightProp);
-  /** Freeze blur while recessing / presenting — backdrop-filter + transform stutters. */
-  const [stackMotionActive, setStackMotionActive] = useState(false);
+  /**
+   * Freeze blur while recessing / presenting — backdrop-filter + transform
+   * stutters and can flicker the whole stage. Start frozen when this sheet is
+   * the stacked overlay so the first paint never runs blur+slide together.
+   */
+  const [stackMotionActive, setStackMotionActive] = useState(
+    () => Boolean(stacked) && !reduced,
+  );
   const wasRecessed = useRef(recessed);
 
   useEffect(() => {
@@ -158,18 +164,22 @@ export function FigSheet({
     openingHeight.current = heightProp;
   }, [heightProp, controlled]);
 
-  useEffect(() => {
+  // Before paint: freeze glass as soon as recess starts/ends.
+  useLayoutEffect(() => {
     if (wasRecessed.current === recessed) return;
     wasRecessed.current = recessed;
     if (reduced) return;
     setStackMotionActive(true);
+    // While recessed, keep blur off for the whole stack (scale + live blur
+    // shimmers the stage). Timer only matters when returning to flat.
+    if (recessed) return;
     const timer = window.setTimeout(() => setStackMotionActive(false), SHEET_PRESENT_MS);
     return () => window.clearTimeout(timer);
   }, [recessed, reduced]);
 
-  // Match BottomSheet: freeze glass while the stacked sheet slides in.
-  // Duration fallback — onAnimationComplete on the slide layer is primary.
-  useEffect(() => {
+  // Freeze glass for the stacked overlay slide — layout effect so blur is
+  // already off on the first animation frame.
+  useLayoutEffect(() => {
     if (!stacked || reduced) return;
     setStackMotionActive(true);
     const timer = window.setTimeout(() => setStackMotionActive(false), SHEET_PRESENT_MS);
@@ -177,8 +187,12 @@ export function FigSheet({
   }, [stacked, reduced]);
 
   const onStackSlideComplete = useCallback(() => {
-    if (stacked && !reduced) setStackMotionActive(false);
-  }, [stacked, reduced]);
+    // Underlays stay frozen while recessed; only the front sheet restores glass.
+    if (stacked && !reduced && !recessed) setStackMotionActive(false);
+  }, [stacked, reduced, recessed]);
+
+  /** Live blur only when the sheet is flat and not mid-transition. */
+  const freezeGlass = stackMotionActive || recessed;
 
   const height = controlled ? heightProp : uncontrolledHeight;
   // Collapse always lands on `partial`; expand returns to `full` unless a
@@ -404,7 +418,7 @@ export function FigSheet({
     elevated || stacked
       ? "fig-sheet absolute inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden"
       : "fig-sheet absolute inset-x-0 bottom-0 z-[35] flex flex-col overflow-hidden",
-    stackMotionActive || recessed ? "will-change-transform" : "",
+    freezeGlass ? "will-change-transform" : "",
     recessed ? "pointer-events-none" : "",
     stacked ? "shadow-[0_-8px_40px_rgba(0,0,0,0.18)]" : "",
     className,
@@ -448,7 +462,7 @@ export function FigSheet({
         <motion.div
           className={[
             "absolute inset-x-0 bottom-0",
-            stackMotionActive ? "will-change-transform" : "",
+            freezeGlass ? "will-change-transform" : "",
           ].join(" ")}
           custom={heightPct}
           variants={{
@@ -473,10 +487,10 @@ export function FigSheet({
             aria-labelledby={title ? titleId : undefined}
             aria-label={title ? undefined : "Trip details"}
             aria-hidden={recessed || undefined}
-            data-sheet-motion={stackMotionActive ? "active" : undefined}
+            data-sheet-motion={freezeGlass ? "active" : undefined}
             className={[
               "fig-sheet absolute inset-0 flex flex-col overflow-hidden",
-              stackMotionActive || recessed ? "will-change-transform" : "",
+              freezeGlass ? "will-change-transform" : "",
               recessed ? "pointer-events-none" : "",
               "shadow-[0_-8px_40px_rgba(0,0,0,0.18)]",
               className,
@@ -517,7 +531,7 @@ export function FigSheet({
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : "Trip details"}
         aria-hidden={recessed || undefined}
-        data-sheet-motion={stackMotionActive ? "active" : undefined}
+        data-sheet-motion={freezeGlass ? "active" : undefined}
         className={sheetClass}
         style={{ transformOrigin: "top center" }}
         initial={false}

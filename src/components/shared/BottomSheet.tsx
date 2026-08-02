@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type { ReactNode } from "react";
 import {
   AnimatePresence,
@@ -90,8 +97,14 @@ export function BottomSheet({
   const titleId = useId();
   const dragControls = useDragControls();
   const dimBehind = stacked || showScrim;
-  /** Freeze blur while the stacked sheet is traveling — blur+transform stutters. */
-  const [sheetMotionActive, setSheetMotionActive] = useState(false);
+  /**
+   * Freeze blur while the stacked sheet is traveling — blur+transform stutters
+   * and can flicker the whole stage. Start frozen when a stacked sheet opens
+   * so the first paint never pairs live glass with the slide.
+   */
+  const [sheetMotionActive, setSheetMotionActive] = useState(
+    () => Boolean(stacked && open && !reduced),
+  );
   const prevOpen = useRef(open);
 
   const onGrabberDragEnd = useCallback(
@@ -106,7 +119,7 @@ export function BottomSheet({
     [onClose],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!stacked || reduced) {
       setSheetMotionActive(false);
       prevOpen.current = open;

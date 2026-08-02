@@ -164,8 +164,10 @@ body {
 }
 
 /*
- * During sheet-stack slide/scale, blur is recomputed every frame and stutters.
- * Swap to an opaque-enough plate for the 500 ms presentation, then restore.
+ * During sheet-stack slide/scale (and while an underlay stays recessed),
+ * blur is recomputed every frame and stutters the whole stage. Swap to an
+ * opaque-enough plate for the transition, then restore frosted glass when
+ * the front sheet is flat again.
  */
 .fig-sheet[data-sheet-motion="active"] {
   -webkit-backdrop-filter: none;
