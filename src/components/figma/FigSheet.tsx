@@ -11,6 +11,8 @@ import { useUnderlayRecessed } from "../shared/SheetStackContext";
 import { ChevronDownIcon, ChevronUpIcon, CircularIconButton, XCloseIcon } from "./chrome";
 
 const SHEET_PRESENT_MS = IOS_SHEET_STACK.duration * 1000 + 40;
+/** Pixel slide — matches FIG_VIEWPORT.height. `%` of self-height is 0 pre-layout. */
+const SLIDE_FROM_Y = 874;
 
 /**
  * Sheet heights from the Figma map-backed frames.
@@ -437,20 +439,17 @@ export function FigSheet({
           aria-hidden="true"
           className="absolute inset-0"
           style={{ background: IOS_SHEET_STACK.scrim }}
-          variants={{
-            open: { opacity: 1 },
-            closed: { opacity: 0 },
-          }}
+          initial={reduced ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           transition={reduced ? { duration: 0.001 } : iosSheetFade}
           onClick={onClose}
         />
         <motion.div
           className="absolute inset-x-0 bottom-0 will-change-transform"
-          variants={{
-            open: reduced ? { opacity: 1, y: 0 } : { y: 0 },
-            closed: reduced ? { opacity: 0, y: 0 } : { y: "100%" },
-          }}
-          animate={{ height: heightPct }}
+          initial={reduced ? false : { y: SLIDE_FROM_Y }}
+          animate={{ y: 0, height: heightPct }}
+          exit={reduced ? undefined : { y: SLIDE_FROM_Y }}
           transition={
             reduced
               ? { duration: 0.001 }

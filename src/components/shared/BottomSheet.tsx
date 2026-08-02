@@ -21,6 +21,9 @@ import {
   XCloseIcon,
 } from "../figma/chrome";
 
+/** Pixel slide — matches FIG_VIEWPORT.height. `%` of self-height is 0 pre-layout. */
+const SLIDE_FROM_Y = 874;
+
 type SheetSize = "auto" | "outcome" | "tall" | "full";
 
 interface BottomSheetProps {
@@ -112,30 +115,20 @@ export function BottomSheet({
     canCollapse && collapsed ? "partial" : size;
   const heightPct =
     activeSize === "auto" ? undefined : `${FRACTIONS[activeSize] * 100}%`;
-  /**
-   * Enable height CSS tween only after the sheet has painted at its open
-   * height — so enter stays a pure y-slide, and chevron resize eases.
-   */
-  const [heightTweenReady, setHeightTweenReady] = useState(false);
-  /** Drag on the same node as enter `y` fights the slide — gate until settled. */
+  /** Drag / height tweens / focus wait until enter slide finishes. */
   const [enterSettled, setEnterSettled] = useState(false);
 
   useEffect(() => {
     if (!open) {
-      setHeightTweenReady(false);
       setCollapsed(false);
       setEnterSettled(false);
       return;
     }
-    const id = window.requestAnimationFrame(() => setHeightTweenReady(true));
     const settle = window.setTimeout(
       () => setEnterSettled(true),
       (stacked ? IOS_SHEET_STACK.duration : duration.sheet) * 1000 + 48,
     );
-    return () => {
-      window.cancelAnimationFrame(id);
-      window.clearTimeout(settle);
-    };
+    return () => window.clearTimeout(settle);
   }, [open, stacked]);
 
   const toggle = useCallback(() => {
@@ -197,28 +190,24 @@ export function BottomSheet({
     };
 
     document.addEventListener("keydown", handleKey);
-
-    // Focus the dialog container rather than its first control. Landing focus
-    // on the close button paints a stray ring, and landing it on the primary
-    // action would put a payment one Enter keypress away from an accidental tap.
-    // An explicit `data-autofocus` element still wins if a sheet asks for one.
-    const raf = requestAnimationFrame(() => {
-      const requested = sheetRef.current?.querySelector<HTMLElement>(
-        '[data-autofocus="true"]',
-      );
-      (requested ?? sheetRef.current)?.focus();
-    });
-
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     return () => {
       document.removeEventListener("keydown", handleKey);
-      cancelAnimationFrame(raf);
       document.body.style.overflow = originalOverflow;
       previouslyFocused.current?.focus?.();
     };
   }, [open, onClose]);
+
+  // Focus after the slide settles — Safari focus mid-enter can jump layout.
+  useEffect(() => {
+    if (!open || !enterSettled) return;
+    const requested = sheetRef.current?.querySelector<HTMLElement>(
+      '[data-autofocus="true"]',
+    );
+    (requested ?? sheetRef.current)?.focus();
+  }, [open, enterSettled]);
 
   const sheetMotion = reduced
     ? { duration: 0.001 }
@@ -260,10 +249,9 @@ export function BottomSheet({
                   ? IOS_SHEET_STACK.scrim
                   : "rgba(0, 0, 0, 0.16)",
               }}
-              variants={{
-                open: { opacity: 1 },
-                closed: { opacity: 0 },
-              }}
+              initial={reduced ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={scrimMotion}
               onClick={onClose}
             />
@@ -277,8 +265,8 @@ export function BottomSheet({
           )}
 
           {/*
-            Slide layer owns enter/exit `y` only. Glass + height sit inside so
-            drag / height tweens cannot yank the sheet to the top mid-present.
+            Pixel `y` (not %) — percent-of-self is 0 before layout, so enter
+            sometimes started on-screen (top flash) then corrected to the bottom.
           */}
           <motion.div
             className="absolute inset-x-0 bottom-0 will-change-transform"
@@ -287,16 +275,15 @@ export function BottomSheet({
                 ? {
                     height: heightPct,
                     transition:
-                      heightTweenReady && canCollapse && !reduced
+                      enterSettled && canCollapse && !reduced
                         ? `height ${IOS_SHEET_STACK.duration}s cubic-bezier(${IOS_SHEET_STACK.ease.join(",")})`
                         : undefined,
                   }
                 : undefined
             }
-            variants={{
-              open: reduced ? { opacity: 1, y: 0 } : { y: 0 },
-              closed: reduced ? { opacity: 0, y: 0 } : { y: "100%" },
-            }}
+            initial={reduced ? false : { y: SLIDE_FROM_Y }}
+            animate={{ y: 0 }}
+            exit={reduced ? undefined : { y: SLIDE_FROM_Y }}
             transition={sheetMotion}
           >
           <motion.div
