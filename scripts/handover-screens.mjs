@@ -40,7 +40,27 @@ const shots = [
       await new Promise((r) => setTimeout(r, 1100));
     },
   },
-  { file: "executing", slug: "executing", wait: 1500 },
+  {
+    // Execution auto-completes in ~3.5s. Avoid networkidle (map tiles) or the
+    // shot lands on the success sheet. Capture mid-progress, then freeze timers.
+    file: "executing",
+    slug: "executing",
+    waitUntil: "domcontentloaded",
+    wait: 0,
+    after: async (page) => {
+      await page.waitForFunction(
+        () => /Rebooking to AI|Rechecking fare/i.test(document.body.innerText),
+        { timeout: 20000 },
+      );
+      await new Promise((r) => setTimeout(r, 900));
+      await page.evaluate(() => {
+        const highest = window.setTimeout(() => {}, 0);
+        for (let i = 0; i <= highest + 200; i += 1) window.clearTimeout(i);
+        window.setTimeout = () => 0;
+      });
+      await new Promise((r) => setTimeout(r, 250));
+    },
+  },
   { file: "success", slug: "success", wait: 1000 },
   { file: "boarding-pass", slug: "ticket", wait: 1000 },
   { file: "price-changed", slug: "price-change", wait: 900 },
@@ -99,12 +119,26 @@ const browser = await puppeteer.launch({
   ],
 });
 
-for (const shot of shots) {
+const only = process.env.ONLY?.split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const selected = only?.length
+  ? shots.filter((shot) => only.includes(shot.file))
+  : shots;
+
+if (only?.length && selected.length === 0) {
+  console.error(`No shots matched ONLY=${process.env.ONLY}`);
+  process.exit(1);
+}
+
+for (const shot of selected) {
   const page = await browser.newPage();
   await page.setViewport(DEVICE);
   const url = `${BASE}/?state=${shot.slug}`;
+  const waitUntil = shot.waitUntil ?? "networkidle0";
   try {
-    await page.goto(url, { waitUntil: "networkidle0", timeout: 45000 });
+    await page.goto(url, { waitUntil, timeout: 45000 });
   } catch (error) {
     console.error(`goto failed ${url}: ${String(error)}`);
   }
@@ -134,4 +168,4 @@ for (const shot of shots) {
 }
 
 await browser.close();
-console.log(`Wrote ${shots.length} screens to ${outDir}`);
+console.log(`Wrote ${selected.length} screens to ${outDir}`);

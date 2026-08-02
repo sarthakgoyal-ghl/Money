@@ -173,6 +173,17 @@ body {
   background: rgba(255, 255, 255, 0.94);
 }
 
+/*
+ * Plan B desktop cutout: the stage map sits outside the phone frame, so
+ * backdrop-filter cannot reliably frost it. Use a stable opaque plate instead
+ * of muddy partial blur in production.
+ */
+[data-map-shell][data-stage-cutout="true"] .fig-sheet:not([data-sheet-motion="active"]) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgba(255, 255, 255, 0.92);
+}
+
 /* Kept as an empty hook so call sites stay stable; fill layers that
    darkened the glass were removed (see comment above). */
 .fig-sheet-fill {

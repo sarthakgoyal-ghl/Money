@@ -12,7 +12,13 @@
  * be placed here.
  *
  * `VITE_FIGMA_URL` is likewise public (a shareable Figma link) and optional.
+ * When unset or invalid, the assignment file URL is used so /handover keeps a
+ * Figma control without depending on Vercel env wiring.
  */
+
+/** Public assignment file — safe to ship; override with `VITE_FIGMA_URL`. */
+const DEFAULT_FIGMA_URL =
+  "https://www.figma.com/design/MWmZGMYwUfaKRxzmhsOM1o/Jupiter-Money-%7C-UX-Design-Assignment?node-id=0-1";
 
 const rawMapboxToken = import.meta.env.VITE_MAPBOX_TOKEN?.trim() ?? "";
 
@@ -35,12 +41,7 @@ export function assertPublicMapboxToken(token: string): void {
   }
 }
 
-/**
- * Optional public Figma file URL for the handover microsite.
- * Empty / invalid → no Open Figma control is rendered.
- */
-export function getFigmaUrl(): string | null {
-  const raw = import.meta.env.VITE_FIGMA_URL?.trim() ?? "";
+function parseFigmaUrl(raw: string): string | null {
   if (!raw) return null;
   try {
     const url = new URL(raw);
@@ -50,6 +51,15 @@ export function getFigmaUrl(): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Public Figma file URL for the handover microsite.
+ * Prefers `VITE_FIGMA_URL` when valid; otherwise the assignment default.
+ */
+export function getFigmaUrl(): string | null {
+  const fromEnv = parseFigmaUrl(import.meta.env.VITE_FIGMA_URL?.trim() ?? "");
+  return fromEnv ?? parseFigmaUrl(DEFAULT_FIGMA_URL);
 }
 
 /** Figma embed iframe src for an in-page file viewer. */

@@ -105,6 +105,8 @@ export function App() {
     caseDetailsOpen ||
     specialistChatOpen ||
     paymentOpen;
+  /** iOS stack — underlay recess or boarding pass over success. */
+  const sheetStackPeek = underlayRecessed || boardingPassOpen;
 
   const closeAllSheets = useCallback(() => {
     setConfirmationOpen(false);
@@ -395,9 +397,14 @@ export function App() {
 
   if (onAssistant) {
     return (
-      <PrototypeStage>
+      <PrototypeStage sheetStackPeek={sheetStackPeek}>
         <SheetStackProvider recessed={underlayRecessed}>
-          <div className="relative h-full w-full overflow-hidden">
+          <div
+            className={[
+              "relative h-full w-full",
+              sheetStackPeek ? "overflow-visible" : "overflow-hidden",
+            ].join(" ")}
+          >
             <AssistantScreen
               phase={model.state === "interpreting" ? "interpreting" : "proposal"}
               request={request}
@@ -425,9 +432,14 @@ export function App() {
   }
 
   return (
-    <PrototypeStage>
+    <PrototypeStage sheetStackPeek={sheetStackPeek}>
       <SheetStackProvider recessed={underlayRecessed}>
-        <div className="relative h-full w-full overflow-hidden">
+        <div
+          className={[
+            "relative h-full w-full",
+            sheetStackPeek ? "overflow-visible" : "overflow-hidden",
+          ].join(" ")}
+        >
           <FigmaMapFlow
             model={model}
             payment={payment}

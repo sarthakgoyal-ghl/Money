@@ -114,7 +114,7 @@ export function BottomSheet({
     }
     if (prevOpen.current === open) return;
     prevOpen.current = open;
-    setSheetMotionActive(true);
+    if (open) setSheetMotionActive(true);
     const timer = window.setTimeout(
       () => setSheetMotionActive(false),
       IOS_SHEET_STACK.duration * 1000 + 40,
@@ -245,7 +245,8 @@ export function BottomSheet({
             }
             className={[
               // Same Apple frosted glass as FigSheet — not solid white / night.
-              "fig-sheet absolute inset-x-0 bottom-0 flex w-full flex-col overflow-hidden rounded-t-[24px] outline-none will-change-transform",
+              "fig-sheet absolute inset-x-0 bottom-0 flex w-full flex-col overflow-hidden rounded-t-[24px] outline-none",
+              stacked && sheetMotionActive ? "will-change-transform" : "",
               // Stacked sheets cast a soft elevation shadow like UIKit cards.
               stacked
                 ? "shadow-[0_-8px_40px_rgba(0,0,0,0.18)]"
@@ -261,6 +262,11 @@ export function BottomSheet({
                 : { y: "100%" },
             }}
             transition={sheetMotion}
+            onAnimationComplete={(definition) => {
+              if (stacked && !reduced && definition === "open") {
+                setSheetMotionActive(false);
+              }
+            }}
             drag={reduced ? false : "y"}
             dragControls={dragControls}
             dragListener={false}

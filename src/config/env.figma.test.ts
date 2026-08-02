@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { getFigmaFileTitle, toFigmaEmbedUrl } from "./env";
+import { getFigmaFileTitle, getFigmaUrl, toFigmaEmbedUrl } from "./env";
 
 const FIGMA_URL =
   "https://www.figma.com/design/MWmZGMYwUfaKRxzmhsOM1o/Jupiter-Money-%7C-UX-Design-Assignment?node-id=0-1";
+
+describe("getFigmaUrl", () => {
+  it("returns a valid figma.com https URL", () => {
+    const url = getFigmaUrl();
+    expect(url).toMatch(/^https:\/\/www\.figma\.com\/design\//);
+    expect(url).toContain("MWmZGMYwUfaKRxzmhsOM1o");
+  });
+});
 
 describe("toFigmaEmbedUrl", () => {
   it("builds a share embed URL for a Figma design link", () => {

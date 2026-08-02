@@ -22,6 +22,11 @@ interface PrototypeStageProps {
   children: ReactNode;
   /** Reviewer scaffolding — rendered outside the phone frame, never inside product UI. */
   devControls?: ReactNode;
+  /**
+   * Allow recessed under-sheet rims to peek above the front sheet during iOS
+   * stack presentation — overflow-hidden on the device frame clips them.
+   */
+  sheetStackPeek?: boolean;
 }
 
 /** Framing when the assistant phone is opaque — Earth sits behind the device. */
@@ -42,7 +47,7 @@ function noopOffFrame(_offFrame: boolean): void {}
  * hides the journey and pulls back to stars; map-backed states cut the phone
  * out and frame the route.
  */
-export function PrototypeStage({ children, devControls }: PrototypeStageProps) {
+export function PrototypeStage({ children, devControls, sheetStackPeek = false }: PrototypeStageProps) {
   const isDesktop = useMinWidthMd();
   const stageRef = useRef<HTMLDivElement>(null);
   const deviceRef = useRef<HTMLDivElement>(null);
@@ -54,7 +59,9 @@ export function PrototypeStage({ children, devControls }: PrototypeStageProps) {
         className="relative flex h-[100dvh] w-full items-center justify-center overflow-hidden bg-[#080a18] md:p-6"
       >
         <StageMapHost stageRef={stageRef} deviceRef={deviceRef} />
-        <DeviceFrame ref={deviceRef}>{children}</DeviceFrame>
+        <DeviceFrame ref={deviceRef} sheetStackPeek={sheetStackPeek}>
+          {children}
+        </DeviceFrame>
         {devControls ? (
           <div className="pointer-events-none absolute bottom-4 right-4 z-20 hidden md:block">
             <div className="pointer-events-auto">{devControls}</div>
@@ -175,10 +182,11 @@ function useMinWidthMd(): boolean {
 
 interface DeviceFrameProps {
   children: ReactNode;
+  sheetStackPeek?: boolean;
 }
 
 export const DeviceFrame = forwardRef<HTMLDivElement, DeviceFrameProps>(
-  function DeviceFrame({ children }, ref) {
+  function DeviceFrame({ children, sheetStackPeek = false }, ref) {
     const { stageOwnsMap, session } = useStageMapOwner();
     const cutout = stageOwnsMap && session !== null;
 
@@ -186,7 +194,8 @@ export const DeviceFrame = forwardRef<HTMLDivElement, DeviceFrameProps>(
       <div
         ref={ref}
         className={[
-          "relative z-10 h-full w-full overflow-hidden",
+          "relative z-10 h-full w-full",
+          sheetStackPeek ? "overflow-visible" : "overflow-hidden",
           cutout ? "bg-transparent md:pointer-events-none" : "bg-white",
           // Soften opaque↔cutout with the map camera ease (~1s).
           "md:transition-colors md:duration-1000 md:ease-[cubic-bezier(0.2,0.7,0.2,1)]",
@@ -196,7 +205,9 @@ export const DeviceFrame = forwardRef<HTMLDivElement, DeviceFrameProps>(
         ].join(" ")}
         style={{ boxSizing: "content-box" }}
       >
-        <MobileViewport cutout={cutout}>{children}</MobileViewport>
+        <MobileViewport cutout={cutout} sheetStackPeek={sheetStackPeek}>
+          {children}
+        </MobileViewport>
       </div>
     );
   },
@@ -205,13 +216,19 @@ export const DeviceFrame = forwardRef<HTMLDivElement, DeviceFrameProps>(
 interface MobileViewportProps {
   children: ReactNode;
   cutout?: boolean;
+  sheetStackPeek?: boolean;
 }
 
-export function MobileViewport({ children, cutout = false }: MobileViewportProps) {
+export function MobileViewport({
+  children,
+  cutout = false,
+  sheetStackPeek = false,
+}: MobileViewportProps) {
   return (
     <div
       className={[
-        "relative h-full w-full overflow-hidden md:rounded-[30px]",
+        "relative h-full w-full md:rounded-[30px]",
+        sheetStackPeek ? "overflow-visible" : "overflow-hidden",
         cutout ? "bg-transparent" : "bg-white",
         "md:transition-colors md:duration-1000 md:ease-[cubic-bezier(0.2,0.7,0.2,1)]",
       ].join(" ")}

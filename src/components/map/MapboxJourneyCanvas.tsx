@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Map as MapboxMap } from "mapbox-gl";
 import type { Airport } from "../../data/scenario";
 import { assertPublicMapboxToken, mapboxToken } from "../../config/env";
+import { loadMapbox } from "../../config/prefetchMapbox";
 import { expandBounds, geoRoute, positionAlongRoute, routeBounds } from "../journey/geo";
 import type { GeoRoute } from "../journey/geo";
 import { cameraPresets, paddingForDock } from "./cameraPresets";
@@ -103,7 +104,7 @@ export function MapboxJourneyCanvas({
 
         // Dynamically imported so mapbox-gl stays out of the initial bundle and
         // the shell can paint its loading state first.
-        const mapboxgl = (await import("mapbox-gl")).default;
+        const mapboxgl = (await loadMapbox()).default;
         if (cancelled) return;
 
         if (mapboxgl.supported && !mapboxgl.supported()) {

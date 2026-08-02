@@ -168,11 +168,16 @@ export function FigSheet({
   }, [recessed, reduced]);
 
   // Match BottomSheet: freeze glass while the stacked sheet slides in.
+  // Duration fallback — onAnimationComplete on the slide layer is primary.
   useEffect(() => {
     if (!stacked || reduced) return;
     setStackMotionActive(true);
     const timer = window.setTimeout(() => setStackMotionActive(false), SHEET_PRESENT_MS);
     return () => window.clearTimeout(timer);
+  }, [stacked, reduced]);
+
+  const onStackSlideComplete = useCallback(() => {
+    if (stacked && !reduced) setStackMotionActive(false);
   }, [stacked, reduced]);
 
   const height = controlled ? heightProp : uncontrolledHeight;
@@ -397,8 +402,9 @@ export function FigSheet({
     // home indicator (z-40), matching `1204:81405`. Elevated overlays
     // (boarding on success) match BottomSheet at z-40.
     elevated || stacked
-      ? "fig-sheet absolute inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden will-change-transform"
-      : "fig-sheet absolute inset-x-0 bottom-0 z-[35] flex flex-col overflow-hidden will-change-transform",
+      ? "fig-sheet absolute inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden"
+      : "fig-sheet absolute inset-x-0 bottom-0 z-[35] flex flex-col overflow-hidden",
+    stackMotionActive || recessed ? "will-change-transform" : "",
     recessed ? "pointer-events-none" : "",
     stacked ? "shadow-[0_-8px_40px_rgba(0,0,0,0.18)]" : "",
     className,
@@ -440,17 +446,27 @@ export function FigSheet({
           onClick={onClose}
         />
         <motion.div
-          className="absolute inset-x-0 bottom-0 will-change-transform"
+          className={[
+            "absolute inset-x-0 bottom-0",
+            stackMotionActive ? "will-change-transform" : "",
+          ].join(" ")}
+          custom={heightPct}
           variants={{
-            open: reduced ? { opacity: 1, y: 0 } : { y: 0 },
-            closed: reduced ? { opacity: 0, y: 0 } : { y: "100%" },
+            open: (h: string) =>
+              reduced ? { opacity: 1, y: 0, height: h } : { y: 0, height: h },
+            closed: (h: string) =>
+              reduced
+                ? { opacity: 0, y: 0, height: h }
+                : { y: "100%", height: h },
           }}
-          animate={{ height: heightPct }}
           transition={
             reduced
               ? { duration: 0.001 }
               : { y: iosSheetTransition, opacity: iosSheetFade, height: springSoft }
           }
+          onAnimationComplete={(definition) => {
+            if (definition === "open") onStackSlideComplete();
+          }}
         >
           <motion.section
             ref={sheetRef}
@@ -459,7 +475,8 @@ export function FigSheet({
             aria-hidden={recessed || undefined}
             data-sheet-motion={stackMotionActive ? "active" : undefined}
             className={[
-              "fig-sheet absolute inset-0 flex flex-col overflow-hidden will-change-transform",
+              "fig-sheet absolute inset-0 flex flex-col overflow-hidden",
+              stackMotionActive || recessed ? "will-change-transform" : "",
               recessed ? "pointer-events-none" : "",
               "shadow-[0_-8px_40px_rgba(0,0,0,0.18)]",
               className,

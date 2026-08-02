@@ -248,6 +248,30 @@ function Hairline() {
   return <div aria-hidden="true" className="h-px w-full bg-fig-line" />;
 }
 
+/** Figma `1204:81299` — solid rule between route and meta row. */
+function TicketSolidRule() {
+  return (
+    <div
+      aria-hidden="true"
+      className="h-px w-[321px] max-w-full shrink-0 bg-[#B4B4B4]/40"
+    />
+  );
+}
+
+/** Figma `1204:81321` — dashed perforation above the barcode. */
+function TicketDashRule() {
+  return (
+    <div
+      aria-hidden="true"
+      className="h-px w-[321px] max-w-full shrink-0"
+      style={{
+        backgroundImage:
+          "repeating-linear-gradient(to right, #B4B4B4 0, #B4B4B4 8px, transparent 8px, transparent 16px)",
+      }}
+    />
+  );
+}
+
 /** `1204:81229`–`81235` — soft action tiles, 20px icons + 16/24 label. */
 function SoftAction({
   label,
@@ -407,13 +431,8 @@ function FigBoardingPass({
           </div>
         </div>
 
-        {/* `1204:81299` — solid hairline. */}
-        <img
-          src={`${ASSET}/boarding-meta-line.svg`}
-          alt=""
-          aria-hidden="true"
-          className="h-px w-[321px] max-w-full"
-        />
+        {/* `1204:81299` — solid hairline. CSS, not 0.5px SVG (invisible on mobile). */}
+        <TicketSolidRule />
 
         {/* `1204:81300` — 2×3 meta. */}
         <div className="flex w-full flex-col gap-[8px]">
@@ -462,12 +481,7 @@ function FigBoardingPass({
 
       {/* `1204:81321` — dashed perforation + barcode, pinned at y=202. */}
       <div className="absolute left-1/2 top-[202px] z-[1] flex w-[334px] max-w-[calc(100%-36px)] -translate-x-1/2 flex-col items-center gap-[16px]">
-        <img
-          src={`${ASSET}/boarding-dash.svg`}
-          alt=""
-          aria-hidden="true"
-          className="h-px w-[321px] max-w-full"
-        />
+        <TicketDashRule />
         <div className="relative h-[46px] w-full overflow-hidden">
           <img
             src={`${ASSET}/boarding-barcode.svg`}

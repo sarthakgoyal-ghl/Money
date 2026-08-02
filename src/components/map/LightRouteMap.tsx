@@ -3,6 +3,7 @@ import type { Map as MapboxMap, LngLatBoundsLike, PaddingOptions } from "mapbox-
 import type { Airport } from "../../data/scenario";
 import { assertPublicMapboxToken, mapboxToken } from "../../config/env";
 import { basemapDisabledByUrl } from "../../config/env";
+import { loadMapbox } from "../../config/prefetchMapbox";
 import {
   expandBounds,
   geoRoute,
@@ -86,7 +87,8 @@ interface LightRouteMapProps {
  */
 const STYLE_URL = "mapbox://styles/mapbox/standard";
 const STYLE_FALLBACK_URL = "mapbox://styles/mapbox/streets-v12";
-const LOAD_TIMEOUT_MS = 12000;
+/** Fail over to streets sooner on slow networks (Vercel / distant Mapbox edge). */
+const LOAD_TIMEOUT_MS = 5000;
 const PROGRESS_TWEEN_MS = 780;
 
 const DEFAULT_INSET: MapInset = { top: 24, bottom: 24, left: 24, right: 24 };
@@ -163,7 +165,7 @@ export function LightRouteMap({
     const build = async () => {
       try {
         assertPublicMapboxToken(token);
-        const mapboxgl = (await import("mapbox-gl")).default;
+        const mapboxgl = (await loadMapbox()).default;
         if (cancelled) return;
         if (mapboxgl.supported && !mapboxgl.supported()) {
           setFailed(true);
@@ -193,6 +195,7 @@ export function LightRouteMap({
           interactive: true,
           attributionControl: false,
           fadeDuration: 0,
+          antialias: false,
         });
         created = map;
         mapRef.current = map;

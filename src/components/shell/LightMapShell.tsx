@@ -140,6 +140,7 @@ export function LightMapShell({
     <MapExploreChromeProvider value={exploreChrome}>
       <div
         data-map-shell
+        data-stage-cutout={stageOwnsMap ? "true" : undefined}
         className={[
           "relative h-full w-full overflow-hidden",
           stageOwnsMap ? "bg-transparent pointer-events-none" : "bg-white",
