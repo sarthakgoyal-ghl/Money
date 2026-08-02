@@ -253,7 +253,28 @@ export function LightRouteMap({
           applyLightBasemap(map, variant);
           // Standard may rewrite atmosphere after config — pin fog again on idle.
           applyGlobeGalaxyFog(map);
-          map.once("idle", () => applyGlobeGalaxyFog(map));
+          map.once("idle", () => {
+            if (cancelled || mapRef.current !== map) return;
+            applyGlobeGalaxyFog(map);
+            // Safari often skips the first paint while the host was covered —
+            // resize once idle so tiles/atmosphere composite before reveal.
+            map.resize();
+            try {
+              applyLightCamera(map, {
+                route,
+                destination,
+                mode: framing.current.camera,
+                inset: framing.current.inset,
+                progress: framing.current.progress,
+                animate: false,
+                programmaticMove,
+              });
+            } catch (cameraError) {
+              if (import.meta.env.DEV) {
+                console.warn("[light-map] idle camera fit skipped:", cameraError);
+              }
+            }
+          });
           installJourneyLayers(
             map,
             origin,
@@ -496,16 +517,15 @@ export function LightRouteMap({
     };
   }, [showJourney, showProtectedRoute, ready, route, tone]);
 
-  // 1 = post-ready snap (mount already framed). 2 = first inset measure snap.
-  // 3+ = real transitions (expand/collapse) — ease so both directions match.
-  const framePass = useRef(0);
+  // First framing after ready snaps; every later camera/inset change eases.
+  const hasFramed = useRef(false);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     map.resize();
-    framePass.current += 1;
-    const animate = framePass.current > 2;
+    const animate = hasFramed.current;
+    hasFramed.current = true;
     applyLightCamera(map, {
       route,
       destination,
@@ -585,18 +605,15 @@ export function LightRouteMap({
         }}
       />
 
-      {/* Host stays mounted so Mapbox keeps a stable container; fallback paints
-          on top when the basemap cannot load. */}
+      {/* Host stays opaque — Safari/WebGL often never paints while opacity:0.
+          The gradient above covers cold start until ready. */}
       <div
         ref={hostRef}
         role={failed ? undefined : "img"}
         aria-label={failed ? undefined : routeDescription(origin, destination, tone)}
         aria-hidden={failed || !ready}
         className="absolute inset-0 h-full w-full"
-        style={{
-          opacity: ready && !failed ? 1 : 0,
-          transition: "opacity 320ms cubic-bezier(0.2,0.7,0.2,1)",
-        }}
+        style={{ opacity: failed ? 0 : 1 }}
       />
 
       {failed ? (

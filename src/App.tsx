@@ -393,11 +393,13 @@ export function App() {
     !mapExpanded &&
     !confirmationOpen;
 
-  if (onAssistant) {
-    return (
-      <PrototypeStage>
-        <SheetStackProvider recessed={underlayRecessed}>
-          <div className="relative h-full w-full overflow-hidden">
+  // One PrototypeStage for the session — remounting tore down Mapbox so enlarge
+  // snapped and Safari often never painted the first WebGL canvas.
+  return (
+    <PrototypeStage>
+      <SheetStackProvider recessed={underlayRecessed}>
+        <div className="relative h-full w-full overflow-hidden">
+          {onAssistant ? (
             <AssistantScreen
               phase={model.state === "interpreting" ? "interpreting" : "proposal"}
               request={request}
@@ -415,87 +417,76 @@ export function App() {
               activeSlug={activeSlug}
               onDemoSelect={applySlug}
             />
-
-            {sharedSheets}
-            <FigToast toast={toast} />
-          </div>
-        </SheetStackProvider>
-      </PrototypeStage>
-    );
-  }
-
-  return (
-    <PrototypeStage>
-      <SheetStackProvider recessed={underlayRecessed}>
-        <div className="relative h-full w-full overflow-hidden">
-          <FigmaMapFlow
-            model={model}
-            payment={payment}
-            mapExpanded={mapExpanded}
-            confirmationOpen={confirmationOpen}
-            boardingPassOpen={boardingPassOpen}
-            refineStartsWithResults={refineStartsWithResults}
-            misreadChoice={misreadChoice}
-            activeSlug={activeSlug}
-            onDemoSelect={applySlug}
-            onBack={handleBack}
-            onRouteClick={() => setTripSheetOpen(true)}
-            onCollapseMap={() => setMapExpanded(false)}
-            onReviewChange={handleReviewChange}
-            onSeeOtherOptions={handleOpenRefine}
-            onKeepCurrent={handleKeepCurrent}
-            onCloseConfirmation={handleCloseConfirmation}
-            onApprove={handleApprove}
-            approveLocked={approveLocked || model.state === "executing"}
-            onEditPayment={() => setPaymentOpen(true)}
-            onApplyConstraints={handleApplyConstraints}
-            onSelectOption={handleSelectOption}
-            onUseOption={handleUseOption}
-            onCloseSuccessSummary={() => goTo("proposal")}
-            onViewBoardingPass={() => setBoardingPassOpen(true)}
-            onCloseBoardingPass={() => setBoardingPassOpen(false)}
-            onAddToWallet={() =>
-              showToast("Simulated pass added to Wallet.", "success")
-            }
-            onViewReceipt={() => showToast("Receipt opened.", "success")}
-            onAddToCalendar={() =>
-              showToast("Added to your calendar.", "success")
-            }
-            onGetHelp={() => {
-              setSpecialistChatOpen(true);
-            }}
-            onExecutionTick={() => dispatch({ type: "TICK_EXECUTION" })}
-            onExecutionComplete={() => goTo("success")}
-            onNotifyExecution={() =>
-              showToast(
-                "I'll notify you as soon as the new ticket is issued.",
-                "success",
-              )
-            }
-            onLookAgain={() => {
-              dispatch({ type: "RESET_TO_PROPOSAL" });
-              handleOpenRefine(true);
-            }}
-            onBackToTrip={() => goTo("proposal")}
-            onFindAnotherUnderBudget={() => {
-              dispatch({ type: "RESET_TO_PROPOSAL" });
-              handleOpenRefine(true);
-            }}
-            onReviewRepriced={() => {
-              dispatch({ type: "REVIEW_REPRICED_OPTION" });
-              setConfirmationOpen(true);
-            }}
-            onMisreadChoose={setMisreadChoice}
-            onMisreadApply={handleMisreadApply}
-            onHandoffChat={() => setSpecialistChatOpen(true)}
-            onHandoffCall={() =>
-              showToast(
-                "Calling the travel desk. Your case is already open.",
-                "success",
-              )
-            }
-            onHandoffCaseDetails={() => setCaseDetailsOpen(true)}
-          />
+          ) : (
+            <FigmaMapFlow
+              model={model}
+              payment={payment}
+              mapExpanded={mapExpanded}
+              confirmationOpen={confirmationOpen}
+              boardingPassOpen={boardingPassOpen}
+              refineStartsWithResults={refineStartsWithResults}
+              misreadChoice={misreadChoice}
+              activeSlug={activeSlug}
+              onDemoSelect={applySlug}
+              onBack={handleBack}
+              onRouteClick={() => setTripSheetOpen(true)}
+              onCollapseMap={() => setMapExpanded(false)}
+              onReviewChange={handleReviewChange}
+              onSeeOtherOptions={handleOpenRefine}
+              onKeepCurrent={handleKeepCurrent}
+              onCloseConfirmation={handleCloseConfirmation}
+              onApprove={handleApprove}
+              approveLocked={approveLocked || model.state === "executing"}
+              onEditPayment={() => setPaymentOpen(true)}
+              onApplyConstraints={handleApplyConstraints}
+              onSelectOption={handleSelectOption}
+              onUseOption={handleUseOption}
+              onCloseSuccessSummary={() => goTo("proposal")}
+              onViewBoardingPass={() => setBoardingPassOpen(true)}
+              onCloseBoardingPass={() => setBoardingPassOpen(false)}
+              onAddToWallet={() =>
+                showToast("Simulated pass added to Wallet.", "success")
+              }
+              onViewReceipt={() => showToast("Receipt opened.", "success")}
+              onAddToCalendar={() =>
+                showToast("Added to your calendar.", "success")
+              }
+              onGetHelp={() => {
+                setSpecialistChatOpen(true);
+              }}
+              onExecutionTick={() => dispatch({ type: "TICK_EXECUTION" })}
+              onExecutionComplete={() => goTo("success")}
+              onNotifyExecution={() =>
+                showToast(
+                  "I'll notify you as soon as the new ticket is issued.",
+                  "success",
+                )
+              }
+              onLookAgain={() => {
+                dispatch({ type: "RESET_TO_PROPOSAL" });
+                handleOpenRefine(true);
+              }}
+              onBackToTrip={() => goTo("proposal")}
+              onFindAnotherUnderBudget={() => {
+                dispatch({ type: "RESET_TO_PROPOSAL" });
+                handleOpenRefine(true);
+              }}
+              onReviewRepriced={() => {
+                dispatch({ type: "REVIEW_REPRICED_OPTION" });
+                setConfirmationOpen(true);
+              }}
+              onMisreadChoose={setMisreadChoice}
+              onMisreadApply={handleMisreadApply}
+              onHandoffChat={() => setSpecialistChatOpen(true)}
+              onHandoffCall={() =>
+                showToast(
+                  "Calling the travel desk. Your case is already open.",
+                  "success",
+                )
+              }
+              onHandoffCaseDetails={() => setCaseDetailsOpen(true)}
+            />
+          )}
 
           {sharedSheets}
           <FigToast toast={toast} />
