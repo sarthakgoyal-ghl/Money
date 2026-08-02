@@ -1856,7 +1856,7 @@ a.vx-map-chip:hover {
   }
 }
 
-/* Phones — screenshots bake ~9% corner radius with #0b0c17 fill.
+/* Phones — marketing bezel + screen captures (inner viewport, no device chrome).
    Use fixed radii (not cqi) so containment can't collapse the frame. */
 .vx-phone {
   margin: 0;
@@ -1875,7 +1875,8 @@ a.vx-map-chip:hover {
   --vx-phone-screen-r: 30px;
   border: 3px solid #fff;
   border-radius: calc(var(--vx-phone-screen-r) + 3px);
-  background: #0b0c17;
+  /* White fill — dark fill used to read as a grey L/R hairline in radius gaps */
+  background: #fff;
   box-shadow: 0 20px 40px -16px rgba(0,0,0,0.45), 0 6px 16px rgba(0,0,0,0.18);
   overflow: hidden;
 }
@@ -1888,9 +1889,9 @@ a.vx-map-chip:hover {
   display: block;
   width: 100%;
   height: auto;
-  background: #0b0c17;
-  /* Slight overscale covers baked dark corner wedges under the bezel */
-  transform: scale(1.02);
+  background: #fff;
+  /* Tiny overscale hides sub-pixel AA at the clipped screen radius */
+  transform: scale(1.015);
   transform-origin: center center;
 }
 .vx-phone-hint {

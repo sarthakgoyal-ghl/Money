@@ -23,7 +23,7 @@ export function CaseDetailsSheet({ open, onClose, entries }: CaseDetailsSheetPro
       onClose={onClose}
       title="What the specialist has"
       subtitle={`Case ${supportCase.id}`}
-      size="tall"
+      size="full"
       stacked
     >
       <div className="flex flex-col gap-[16px] pb-[8px]">

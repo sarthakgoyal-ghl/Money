@@ -154,9 +154,11 @@ for (const shot of selected) {
   if (shot.after) await shot.after(page);
 
   const webpPath = resolve(outDir, `${shot.file}.webp`);
-  const frame = await page.$(
-    ".md\\:rounded-fig-device, [class*='rounded-fig-device']",
-  );
+  // Capture the inner screen only — the outer device `border-white/75` baked
+  // into WebPs as a grey L/R fringe inside the marketing phone bezel.
+  const frame =
+    (await page.$("[data-phone-screen]")) ??
+    (await page.$(".md\\:rounded-fig-device, [class*='rounded-fig-device']"));
 
   if (frame) {
     await frame.screenshot({ path: webpPath, type: "webp", quality: 84 });

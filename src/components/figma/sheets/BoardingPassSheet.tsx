@@ -253,7 +253,7 @@ function TicketSolidRule() {
   return (
     <div
       aria-hidden="true"
-      className="h-px w-[321px] max-w-full shrink-0 bg-[#B4B4B4]/40"
+      className="h-px w-[321px] max-w-full shrink-0 bg-[#B4B4B4]"
     />
   );
 }

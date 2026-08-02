@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   AnimatePresence,
@@ -21,7 +14,14 @@ import {
   IOS_SHEET_STACK,
   spring,
 } from "../../motion/tokens";
-import { CircularIconButton, XCloseIcon } from "../figma/chrome";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  CircularIconButton,
+  XCloseIcon,
+} from "../figma/chrome";
+
+type SheetSize = "auto" | "outcome" | "tall" | "full";
 
 interface BottomSheetProps {
   open: boolean;
@@ -36,7 +36,7 @@ interface BottomSheetProps {
   children: ReactNode;
   /** Sticky action area, outside the scroll container. */
   footer?: ReactNode;
-  size?: "auto" | "outcome" | "tall" | "full";
+  size?: SheetSize;
   /** Extra node beside the title, e.g. Trip Pulse. */
   adornment?: ReactNode;
   /**
@@ -49,6 +49,11 @@ interface BottomSheetProps {
    * peeks above this one. Use when opening over another sheet.
    */
   stacked?: boolean;
+  /**
+   * Left chevron + grabber drag resize — same contract as FigSheet.
+   * Defaults on for `tall` / `full` (Travel specialist, Case details).
+   */
+  collapsible?: boolean;
 }
 
 /**
@@ -58,15 +63,17 @@ interface BottomSheetProps {
  * screen, because the decision it is asking for is the hard-to-reverse one.
  * `outcome` is deliberately shorter: the map showing a completed route is part
  * of the reward, so success does not hide it.
+ * `partial` is the collapsed map-readable stop — same fraction as FigSheet.
  */
-const HEIGHTS: Record<NonNullable<BottomSheetProps["size"]>, string> = {
-  auto: "max-h-[88%]",
-  outcome: "h-[66%]",
-  tall: "h-[84%]",
-  full: "h-[93%]",
+const FRACTIONS: Record<Exclude<SheetSize, "auto"> | "partial", number> = {
+  outcome: 0.66,
+  tall: 0.84,
+  full: 0.93,
+  /** Same collapsed stop as FigSheet `partial`. */
+  partial: 0.62,
 };
 
-/** Drag-down distance / velocity that dismisses the sheet. */
+/** Drag-down distance / velocity that dismisses a non-collapsible sheet. */
 const DISMISS_OFFSET_Y = 88;
 const DISMISS_VELOCITY_Y = 720;
 
@@ -75,8 +82,9 @@ const DISMISS_VELOCITY_Y = 720;
  *
  * Matches `FigSheet` material: light Apple frosted glass. Optional
  * `bg-black/16` scrim (off by default). `stacked` uses a darker scrim and a
- * top inset so a recessed under-sheet can peek — iOS sheet stack. Focus is
- * trapped while open and restored to the invoking control on close.
+ * top inset so a recessed under-sheet can peek — iOS sheet stack. Tall/full
+ * sheets get the same minimize chevron + grabber resize as Fig sheets. Focus
+ * is trapped while open and restored to the invoking control on close.
  */
 export function BottomSheet({
   open,
@@ -90,6 +98,7 @@ export function BottomSheet({
   adornment,
   showScrim = false,
   stacked = false,
+  collapsible = size === "tall" || size === "full",
 }: BottomSheetProps) {
   const reduced = useReducedMotion();
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -97,43 +106,50 @@ export function BottomSheet({
   const titleId = useId();
   const dragControls = useDragControls();
   const dimBehind = stacked || showScrim;
+  const [collapsed, setCollapsed] = useState(false);
+  const canCollapse = collapsible && size !== "auto";
+  const activeSize: SheetSize | "partial" =
+    canCollapse && collapsed ? "partial" : size;
+  const heightPct =
+    activeSize === "auto" ? undefined : `${FRACTIONS[activeSize] * 100}%`;
   /**
-   * Freeze blur while the stacked sheet is traveling — blur+transform stutters
-   * and can flicker the whole stage. Start frozen when a stacked sheet opens
-   * so the first paint never pairs live glass with the slide.
+   * Enable height CSS tween only after the sheet has painted at its open
+   * height — so enter stays a pure y-slide, and chevron resize eases.
    */
-  const [sheetMotionActive, setSheetMotionActive] = useState(
-    () => Boolean(stacked && open && !reduced),
-  );
-  const prevOpen = useRef(open);
+  const [heightTweenReady, setHeightTweenReady] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setHeightTweenReady(false);
+      setCollapsed(false);
+      return;
+    }
+    const id = window.requestAnimationFrame(() => setHeightTweenReady(true));
+    return () => window.cancelAnimationFrame(id);
+  }, [open]);
+
+  const toggle = useCallback(() => {
+    if (!canCollapse) return;
+    setCollapsed((value) => !value);
+  }, [canCollapse]);
 
   const onGrabberDragEnd = useCallback(
     (
       _event: MouseEvent | TouchEvent | PointerEvent,
       info: { offset: { y: number }; velocity: { y: number } },
     ) => {
+      if (canCollapse) {
+        // Match FigSheet / AssistantDock: drag up expands, drag down collapses.
+        if (info.offset.y < -28 || info.velocity.y < -420) setCollapsed(false);
+        else if (info.offset.y > 28 || info.velocity.y > 420) setCollapsed(true);
+        return;
+      }
       if (info.offset.y > DISMISS_OFFSET_Y || info.velocity.y > DISMISS_VELOCITY_Y) {
         onClose();
       }
     },
-    [onClose],
+    [canCollapse, onClose],
   );
-
-  useLayoutEffect(() => {
-    if (!stacked || reduced) {
-      setSheetMotionActive(false);
-      prevOpen.current = open;
-      return;
-    }
-    if (prevOpen.current === open) return;
-    prevOpen.current = open;
-    if (open) setSheetMotionActive(true);
-    const timer = window.setTimeout(
-      () => setSheetMotionActive(false),
-      IOS_SHEET_STACK.duration * 1000 + 40,
-    );
-    return () => window.clearTimeout(timer);
-  }, [open, stacked, reduced]);
 
   useEffect(() => {
     if (!open) return;
@@ -250,46 +266,54 @@ export function BottomSheet({
             />
           )}
 
+          {/*
+            Height on this abspos node so % resolves against the dialog.
+            y = enter/exit variants; height CSS-tweens on collapse/expand
+            (same iosSheet curve as the stack) so open stays a clean slide.
+          */}
           <motion.div
             ref={sheetRef}
             tabIndex={-1}
-            data-sheet-motion={
-              stacked && sheetMotionActive ? "active" : undefined
-            }
+            // Keep the freeze plate for the whole overlay life. Restoring blur
+            // after the slide made the scrim suddenly show through the glass.
+            data-sheet-motion={stacked ? "active" : undefined}
+            data-sheet-stacked={stacked ? "true" : undefined}
             className={[
               // Same Apple frosted glass as FigSheet — not solid white / night.
-              "fig-sheet absolute inset-x-0 bottom-0 flex w-full flex-col overflow-hidden rounded-t-[24px] outline-none",
-              stacked && sheetMotionActive ? "will-change-transform" : "",
+              "fig-sheet absolute inset-x-0 bottom-0 flex w-full flex-col overflow-hidden rounded-t-[24px] outline-none will-change-transform",
               // Stacked sheets cast a soft elevation shadow like UIKit cards.
               stacked
                 ? "shadow-[0_-8px_40px_rgba(0,0,0,0.18)]"
                 : "",
-              HEIGHTS[size],
+              // Auto hugs content; fixed sizes use style height below.
+              size === "auto" ? "max-h-[88%]" : "",
             ].join(" ")}
+            style={
+              heightPct
+                ? {
+                    height: heightPct,
+                    transition:
+                      heightTweenReady && canCollapse && !reduced
+                        ? `height ${IOS_SHEET_STACK.duration}s cubic-bezier(${IOS_SHEET_STACK.ease.join(",")})`
+                        : undefined,
+                  }
+                : undefined
+            }
             variants={{
-              open: reduced
-                ? { opacity: 1, y: 0 }
-                : { y: 0 },
-              closed: reduced
-                ? { opacity: 0, y: 0 }
-                : { y: "100%" },
+              open: reduced ? { opacity: 1, y: 0 } : { y: 0 },
+              closed: reduced ? { opacity: 0, y: 0 } : { y: "100%" },
             }}
             transition={sheetMotion}
-            onAnimationComplete={(definition) => {
-              if (stacked && !reduced && definition === "open") {
-                setSheetMotionActive(false);
-              }
-            }}
             drag={reduced ? false : "y"}
             dragControls={dragControls}
             dragListener={false}
             dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0.04, bottom: 0.55 }}
+            dragElastic={{ top: 0.04, bottom: canCollapse ? 0.18 : 0.55 }}
             dragMomentum={false}
             onDragEnd={onGrabberDragEnd}
           >
             {/* Match FigSheet chrome: pt 6 → grabber → gap 6 → title row. */}
-            <div className="relative z-[1] flex shrink-0 flex-col items-center gap-[6px] px-[16px] pt-[6px]">
+            <div className="relative z-[1] flex shrink-0 flex-col items-center gap-[6px] px-[16px] pt-[6px] pb-[4px]">
               <div
                 className="flex w-full cursor-grab touch-none justify-center active:cursor-grabbing"
                 onPointerDown={(event) => {
@@ -299,8 +323,14 @@ export function BottomSheet({
               >
                 <button
                   type="button"
-                  aria-label="Dismiss sheet. Drag down to close."
-                  onClick={onClose}
+                  aria-label={
+                    canCollapse
+                      ? collapsed
+                        ? "Expand sheet. Drag or activate to resize."
+                        : "Collapse sheet. Drag or activate to resize."
+                      : "Dismiss sheet. Drag down to close."
+                  }
+                  onClick={canCollapse ? toggle : onClose}
                   className="flex items-center justify-center focus-ring-fig-map"
                 >
                   {/* Same 48×4 glass grabber as FigSheet `1204:81413`. */}
@@ -311,7 +341,7 @@ export function BottomSheet({
                 </button>
               </div>
 
-              {/* Close on the right — same as FigSheet `81412` / `81355`. */}
+              {/* Expand left, close right — same as FigSheet `81412` / `81355`. */}
               <div
                 className={[
                   "flex w-full justify-between gap-[12px]",
@@ -330,7 +360,13 @@ export function BottomSheet({
                     {adornment}
                   </span>
                 ) : (
-                  <span className="size-[44px] shrink-0" aria-hidden="true" />
+                  <CircularIconButton
+                    label={collapsed ? "Expand details" : "Collapse details"}
+                    onClick={canCollapse ? toggle : undefined}
+                    hidden={!canCollapse}
+                  >
+                    {collapsed ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                  </CircularIconButton>
                 )}
 
                 <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-[2px] px-[4px] text-center">

@@ -164,15 +164,25 @@ body {
 }
 
 /*
- * During sheet-stack slide/scale (and while an underlay stays recessed),
- * blur is recomputed every frame and stutters the whole stage. Swap to an
- * opaque-enough plate for the transition, then restore frosted glass when
- * the front sheet is flat again.
+ * During sheet-stack slide/scale, blur is recomputed every frame and stutters.
+ * Near-white freeze for short motion only (underlay recess, etc.).
  */
-.fig-sheet[data-sheet-motion="active"] {
+.fig-sheet[data-sheet-motion="active"]:not([data-sheet-stacked="true"]) {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+/*
+ * Stacked overlays: opaque cool wash for the whole open life (no scrim pop)
+ * and enough value separation that white cards / rows read as plates.
+ * Higher specificity than motion-active so freeze never flattens them white.
+ */
+.fig-sheet[data-sheet-stacked="true"],
+.fig-sheet[data-sheet-stacked="true"][data-sheet-motion="active"] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: #e5e8ef;
 }
 
 /* Kept as an empty hook so call sites stay stable; fill layers that

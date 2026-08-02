@@ -149,14 +149,8 @@ export function FigSheet({
   const controlled = typeof onHeightChange === "function";
   const [uncontrolledHeight, setUncontrolledHeight] = useState(heightProp);
   const openingHeight = useRef(heightProp);
-  /**
-   * Freeze blur while recessing / presenting — backdrop-filter + transform
-   * stutters and can flicker the whole stage. Start frozen when this sheet is
-   * the stacked overlay so the first paint never runs blur+slide together.
-   */
-  const [stackMotionActive, setStackMotionActive] = useState(
-    () => Boolean(stacked) && !reduced,
-  );
+  /** Freeze blur while recessing / presenting — backdrop-filter + transform stutters. */
+  const [stackMotionActive, setStackMotionActive] = useState(false);
   const wasRecessed = useRef(recessed);
 
   useEffect(() => {
@@ -164,35 +158,27 @@ export function FigSheet({
     openingHeight.current = heightProp;
   }, [heightProp, controlled]);
 
-  // Before paint: freeze glass as soon as recess starts/ends.
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (wasRecessed.current === recessed) return;
+    const becomingRecessed = !wasRecessed.current && recessed;
     wasRecessed.current = recessed;
-    if (reduced) return;
-    setStackMotionActive(true);
-    // While recessed, keep blur off for the whole stack (scale + live blur
-    // shimmers the stage). Timer only matters when returning to flat.
-    if (recessed) return;
-    const timer = window.setTimeout(() => setStackMotionActive(false), SHEET_PRESENT_MS);
-    return () => window.clearTimeout(timer);
+    if (reduced) {
+      setStackMotionActive(false);
+      return;
+    }
+    // Freeze only while pushing the underlay back. Re-freezing on close made
+    // the plate flash for ~560ms then snap to glass after the overlay left —
+    // the late color pop on dismiss.
+    if (becomingRecessed) {
+      setStackMotionActive(true);
+      const timer = window.setTimeout(
+        () => setStackMotionActive(false),
+        SHEET_PRESENT_MS,
+      );
+      return () => window.clearTimeout(timer);
+    }
+    setStackMotionActive(false);
   }, [recessed, reduced]);
-
-  // Freeze glass for the stacked overlay slide — layout effect so blur is
-  // already off on the first animation frame.
-  useLayoutEffect(() => {
-    if (!stacked || reduced) return;
-    setStackMotionActive(true);
-    const timer = window.setTimeout(() => setStackMotionActive(false), SHEET_PRESENT_MS);
-    return () => window.clearTimeout(timer);
-  }, [stacked, reduced]);
-
-  const onStackSlideComplete = useCallback(() => {
-    // Underlays stay frozen while recessed; only the front sheet restores glass.
-    if (stacked && !reduced && !recessed) setStackMotionActive(false);
-  }, [stacked, reduced, recessed]);
-
-  /** Live blur only when the sheet is flat and not mid-transition. */
-  const freezeGlass = stackMotionActive || recessed;
 
   const height = controlled ? heightProp : uncontrolledHeight;
   // Collapse always lands on `partial`; expand returns to `full` unless a
@@ -416,9 +402,8 @@ export function FigSheet({
     // home indicator (z-40), matching `1204:81405`. Elevated overlays
     // (boarding on success) match BottomSheet at z-40.
     elevated || stacked
-      ? "fig-sheet absolute inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden"
-      : "fig-sheet absolute inset-x-0 bottom-0 z-[35] flex flex-col overflow-hidden",
-    freezeGlass ? "will-change-transform" : "",
+      ? "fig-sheet absolute inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden will-change-transform"
+      : "fig-sheet absolute inset-x-0 bottom-0 z-[35] flex flex-col overflow-hidden will-change-transform",
     recessed ? "pointer-events-none" : "",
     stacked ? "shadow-[0_-8px_40px_rgba(0,0,0,0.18)]" : "",
     className,
@@ -460,37 +445,31 @@ export function FigSheet({
           onClick={onClose}
         />
         <motion.div
-          className={[
-            "absolute inset-x-0 bottom-0",
-            freezeGlass ? "will-change-transform" : "",
-          ].join(" ")}
-          custom={heightPct}
+          className="absolute inset-x-0 bottom-0 will-change-transform"
           variants={{
-            open: (h: string) =>
-              reduced ? { opacity: 1, y: 0, height: h } : { y: 0, height: h },
-            closed: (h: string) =>
-              reduced
-                ? { opacity: 0, y: 0, height: h }
-                : { y: "100%", height: h },
+            open: reduced ? { opacity: 1, y: 0 } : { y: 0 },
+            closed: reduced ? { opacity: 0, y: 0 } : { y: "100%" },
           }}
+          animate={{ height: heightPct }}
           transition={
             reduced
               ? { duration: 0.001 }
               : { y: iosSheetTransition, opacity: iosSheetFade, height: springSoft }
           }
-          onAnimationComplete={(definition) => {
-            if (definition === "open") onStackSlideComplete();
-          }}
         >
           <motion.section
             ref={sheetRef}
             aria-labelledby={title ? titleId : undefined}
             aria-label={title ? undefined : "Trip details"}
             aria-hidden={recessed || undefined}
-            data-sheet-motion={freezeGlass ? "active" : undefined}
+            // Stacked overlays keep the dense plate while open (same as
+            // BottomSheet) so the scrim never pops through after the slide.
+            data-sheet-motion={
+              stacked || stackMotionActive ? "active" : undefined
+            }
+            data-sheet-stacked={stacked ? "true" : undefined}
             className={[
-              "fig-sheet absolute inset-0 flex flex-col overflow-hidden",
-              freezeGlass ? "will-change-transform" : "",
+              "fig-sheet absolute inset-0 flex flex-col overflow-hidden will-change-transform",
               recessed ? "pointer-events-none" : "",
               "shadow-[0_-8px_40px_rgba(0,0,0,0.18)]",
               className,
@@ -531,7 +510,11 @@ export function FigSheet({
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : "Trip details"}
         aria-hidden={recessed || undefined}
-        data-sheet-motion={freezeGlass ? "active" : undefined}
+        // Stay on the dense plate while recessed so glass doesn’t restore under
+        // the overlay; clear immediately when un-recessing (see effect above).
+        data-sheet-motion={
+          recessed || stackMotionActive ? "active" : undefined
+        }
         className={sheetClass}
         style={{ transformOrigin: "top center" }}
         initial={false}

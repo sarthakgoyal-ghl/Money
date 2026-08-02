@@ -252,10 +252,10 @@ function DurationStack({
       <span className="mb-[-2px] w-full text-center font-ui text-[7px] font-light leading-normal">
         {duration}
       </span>
-      <span className="mb-[-2px] flex h-[7.844px] w-full items-start">
-        <span className="block size-[8px] shrink-0 rounded-full bg-current opacity-40" />
-        <span className="mt-[3.4px] h-0 flex-1 border-t border-current opacity-30" />
-        <span className="block size-[8px] shrink-0 rounded-full bg-current opacity-40" />
+      <span className="mb-[-2px] flex h-[8px] w-full items-center">
+        <span className="block size-[8px] shrink-0 rounded-full bg-[#BDBDBD]" />
+        <span className="mx-[-1px] h-px min-w-px flex-1 bg-[#BDBDBD]" />
+        <span className="block size-[8px] shrink-0 rounded-full bg-[#BDBDBD]" />
       </span>
       <span className="w-full text-center font-ui text-[7px] font-light leading-normal">
         {stops === 0 ? "Nonstop" : stops === 1 ? "1 stop" : `${stops} stops`}

@@ -219,7 +219,8 @@ export function MobileViewport({
 }: MobileViewportProps) {
   return (
     <div
-        className={[
+      data-phone-screen
+      className={[
         "relative h-full w-full isolate overflow-hidden md:rounded-[30px]",
         cutout ? "bg-transparent" : "bg-white",
         "md:transition-colors md:duration-1000 md:ease-[cubic-bezier(0.2,0.7,0.2,1)]",

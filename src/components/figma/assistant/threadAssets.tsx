@@ -199,15 +199,15 @@ export function CabinClassIcon() {
 /**
  * The origin/destination connector between the two times.
  *
- * Two 8 px rings with a hairline between them, on a 7.84 px row — the line is
- * an exported 0-height vector offset half a pixel up, which is why it reads as
- * a true hairline instead of a 1 px box-shadow.
+ * Two 8 px terminal dots with a CSS hairline between them. The Figma export
+ * was a 0.5 px SVG (`node-line.svg`) — that disappears on mobile/retina, so
+ * the stroke is a 1 px CSS rule at the same `#BDBDBD` colour.
  */
 export function RouteConnector() {
   return (
     <span
       aria-hidden="true"
-      className="flex h-[7.844px] w-full shrink-0 items-start"
+      className="flex h-[8px] w-full shrink-0 items-center"
     >
       {/* `1204:80874` / `80876` — 8×8 terminal dots. */}
       <span className="relative size-[8px] shrink-0 overflow-hidden">
@@ -217,16 +217,10 @@ export function RouteConnector() {
           className="absolute inset-0 block size-full max-w-none"
         />
       </span>
-      {/* `1204:80875` — 0-height flex line, hairline offset −0.5px. */}
-      <span className="relative h-0 min-w-px flex-1 self-center">
-        <span className="absolute inset-x-0 top-[-0.5px]">
-          <img
-            src={`${ASSET}/node-line.svg`}
-            alt=""
-            className="block h-[0.5px] w-full max-w-none"
-          />
-        </span>
-      </span>
+      <span
+        aria-hidden="true"
+        className="mx-[-1px] h-px min-w-px flex-1 bg-[#BDBDBD]"
+      />
       <span className="relative size-[8px] shrink-0 overflow-hidden">
         <img
           src={`${ASSET}/node-dot.svg`}

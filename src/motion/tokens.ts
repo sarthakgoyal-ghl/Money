@@ -49,18 +49,18 @@ export const springSoft: Transition = {
  * Underlay scale ~0.93 on a 402 frame (~14 pt inset).
  */
 export const IOS_SHEET_STACK = {
-  /** (402 − 28) / 402 — ~14 pt inset per side. */
-  underlayScale: 0.93,
-  /** Lift underlay so its top rim peeks above the front sheet. */
-  underlayLiftY: -14,
+  /** Slightly gentler recess than a hard 14pt inset — still reads as iOS stack. */
+  underlayScale: 0.94,
+  /** Peek above the overlay without a sharp upward snap. */
+  underlayLiftY: -12,
   /** Larger continuous corner when pushed back (WWDC21 stacked corners). */
   underlayRadiusPx: 28,
   /** Dimming between stacked sheets. */
-  scrim: "rgba(0, 0, 0, 0.4)",
-  /** Presentation duration — matches Vaul / UIKit sheet (~500 ms). */
-  duration: 0.5,
-  /** Apple sheet ease: fast start, soft settle, zero overshoot. */
-  ease: [0.32, 0.72, 0, 1] as const,
+  scrim: "rgba(0, 0, 0, 0.36)",
+  /** A touch longer than stock 500ms so the settle feels softer. */
+  duration: 0.56,
+  /** Same Apple family, slightly softer deceleration into rest. */
+  ease: [0.22, 0.78, 0.1, 1] as const,
 } as const;
 
 /** Overlay slide + underlay scale/lift — same curve enter and exit. */
