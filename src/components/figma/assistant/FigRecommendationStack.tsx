@@ -1,8 +1,6 @@
 import type { FlightOption } from "../../../data/scenario";
 import { BLR, BOM, formatINR } from "../../../data/scenario";
 import { LightRouteMap } from "../../map/LightRouteMap";
-import { MapFallback } from "../../map/MapFallback";
-import { useStageMapOwner } from "../../shell/stageMapOwner";
 import {
   BaggageIcon,
   CabinClassIcon,
@@ -144,34 +142,20 @@ export function FigRecommendationStack({
   );
 }
 
-/** `1213:77677` — 168 px route crop with a 36 px glass expand control. */
+/** `1213:77677` — 168 px live route crop with a 36 px glass expand control. */
 function MiniMapPreview({ onExpand }: { onExpand: () => void }) {
-  const { stageOwnsMap } = useStageMapOwner();
-
   return (
     <div className="relative h-[168px] w-full">
-      {stageOwnsMap ? (
-        // Desktop already hosts one Mapbox behind the phone — a second WebGL
-        // context on cold Safari often leaves the stage canvas black.
-        <MapFallback
-          origin={BOM}
-          destination={BLR}
-          tone="active"
-          progress={0.46}
-          dockFraction={0.35}
-        />
-      ) : (
-        <LightRouteMap
-          origin={BOM}
-          destination={BLR}
-          variant="mini"
-          tone="active"
-          progress={0.46}
-          camera="proposal"
-          inset={{ top: 28, bottom: 28, left: 40, right: 40 }}
-          className="h-full w-full"
-        />
-      )}
+      <LightRouteMap
+        origin={BOM}
+        destination={BLR}
+        variant="mini"
+        tone="active"
+        progress={0.46}
+        camera="proposal"
+        inset={{ top: 28, bottom: 28, left: 40, right: 40 }}
+        className="h-full w-full"
+      />
       <button
         type="button"
         onClick={onExpand}
