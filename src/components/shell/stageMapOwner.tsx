@@ -32,6 +32,12 @@ export interface StageMapSession {
 interface StageMapOwnerValue {
   /** Desktop cutout is active — shell must not mount a second Mapbox map. */
   stageOwnsMap: boolean;
+  /**
+   * Stage backdrop Mapbox has painted at least once. Desktop mini previews
+   * should wait on this so Safari does not starve the stage WebGL context.
+   */
+  stageBasemapReady: boolean;
+  notifyStageBasemapReady: () => void;
   session: StageMapSession | null;
   publishSession: (session: StageMapSession | null) => void;
 }
@@ -50,13 +56,29 @@ export function StageMapOwnerProvider({
   children: ReactNode;
 }) {
   const [session, setSession] = useState<StageMapSession | null>(null);
+  const [stageBasemapReady, setStageBasemapReady] = useState(false);
   const publishSession = useCallback((next: StageMapSession | null) => {
     setSession((prev) => (sameSession(prev, next) ? prev : next));
   }, []);
+  const notifyStageBasemapReady = useCallback(() => {
+    setStageBasemapReady(true);
+  }, []);
 
   const value = useMemo(
-    () => ({ stageOwnsMap, session, publishSession }),
-    [stageOwnsMap, session, publishSession],
+    () => ({
+      stageOwnsMap,
+      stageBasemapReady,
+      notifyStageBasemapReady,
+      session,
+      publishSession,
+    }),
+    [
+      stageOwnsMap,
+      stageBasemapReady,
+      notifyStageBasemapReady,
+      session,
+      publishSession,
+    ],
   );
 
   return (
@@ -92,6 +114,8 @@ export function useStageMapOwner(): StageMapOwnerValue {
   if (!value) {
     return {
       stageOwnsMap: false,
+      stageBasemapReady: true,
+      notifyStageBasemapReady: () => undefined,
       session: null,
       publishSession: () => undefined,
     };

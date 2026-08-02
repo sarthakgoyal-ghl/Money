@@ -78,6 +78,8 @@ interface LightRouteMapProps {
   fitSignal?: number;
   /** Fires when the user pans/zooms away from — or returns to — the framed route. */
   onOffFrameChange?: (offFrame: boolean) => void;
+  /** Fires once the basemap has painted and the cover may safely lift. */
+  onBasemapReady?: () => void;
 }
 
 /**
@@ -114,6 +116,7 @@ export function LightRouteMap({
   className = "",
   fitSignal = 0,
   onOffFrameChange,
+  onBasemapReady,
 }: LightRouteMapProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -138,8 +141,11 @@ export function LightRouteMap({
   const entranceArmed = useRef(false);
   const [flightEntranceToken, setFlightEntranceToken] = useState(0);
   const programmaticMove = useRef(false);
+  const revealed = useRef(false);
   const onOffFrameChangeRef = useRef(onOffFrameChange);
   onOffFrameChangeRef.current = onOffFrameChange;
+  const onBasemapReadyRef = useRef(onBasemapReady);
+  onBasemapReadyRef.current = onBasemapReady;
 
   const setOffFrame = (value: boolean) => {
     onOffFrameChangeRef.current?.(value);
@@ -150,17 +156,20 @@ export function LightRouteMap({
     if (!host) return;
     if (!mapboxToken || basemapDisabledByUrl()) {
       setFailed(true);
+      onBasemapReadyRef.current?.();
       return;
     }
 
     const token = mapboxToken;
     if (!token) {
       setFailed(true);
+      onBasemapReadyRef.current?.();
       return;
     }
 
     let cancelled = false;
     let created: MapboxMap | null = null;
+    let revealFallbackId = 0;
 
     const build = async () => {
       try {
@@ -169,6 +178,7 @@ export function LightRouteMap({
         if (cancelled) return;
         if (mapboxgl.supported && !mapboxgl.supported()) {
           setFailed(true);
+          onBasemapReadyRef.current?.();
           return;
         }
         mapboxgl.accessToken = token;
@@ -241,40 +251,32 @@ export function LightRouteMap({
           created = null;
           mapRef.current = null;
           setFailed(true);
+          onBasemapReadyRef.current?.();
           return;
         }
 
         // Basemap first — never leave the canvas blank if route layers fail.
         setFailed(false);
         map.resize();
-        setReady(true);
+
+        // Keep the cover up until idle (or timeout). Revealing on style.load
+        // showed a black WebGL buffer on Safari/production cold starts.
+        const reveal = () => {
+          if (cancelled || revealed.current || mapRef.current !== map) return;
+          revealed.current = true;
+          map.resize();
+          try {
+            map.triggerRepaint();
+          } catch {
+            // triggerRepaint is best-effort on older GL builds
+          }
+          setReady(true);
+          onBasemapReadyRef.current?.();
+        };
 
         try {
           applyLightBasemap(map, variant);
-          // Standard may rewrite atmosphere after config — pin fog again on idle.
           applyGlobeGalaxyFog(map);
-          map.once("idle", () => {
-            if (cancelled || mapRef.current !== map) return;
-            applyGlobeGalaxyFog(map);
-            // Safari often skips the first paint while the host was covered —
-            // resize once idle so tiles/atmosphere composite before reveal.
-            map.resize();
-            try {
-              applyLightCamera(map, {
-                route,
-                destination,
-                mode: framing.current.camera,
-                inset: framing.current.inset,
-                progress: framing.current.progress,
-                animate: false,
-                programmaticMove,
-              });
-            } catch (cameraError) {
-              if (import.meta.env.DEV) {
-                console.warn("[light-map] idle camera fit skipped:", cameraError);
-              }
-            }
-          });
           installJourneyLayers(
             map,
             origin,
@@ -305,6 +307,30 @@ export function LightRouteMap({
           }
         }
 
+        map.once("idle", () => {
+          if (cancelled || mapRef.current !== map) return;
+          applyGlobeGalaxyFog(map);
+          map.resize();
+          try {
+            applyLightCamera(map, {
+              route,
+              destination,
+              mode: framing.current.camera,
+              inset: framing.current.inset,
+              progress: framing.current.progress,
+              animate: false,
+              programmaticMove,
+            });
+          } catch (cameraError) {
+            if (import.meta.env.DEV) {
+              console.warn("[light-map] idle camera fit skipped:", cameraError);
+            }
+          }
+          reveal();
+        });
+
+        revealFallbackId = window.setTimeout(reveal, 2200);
+
         requestAnimationFrame(() => {
           if (cancelled || mapRef.current !== map) return;
           map.resize();
@@ -332,6 +358,7 @@ export function LightRouteMap({
         created = null;
         mapRef.current = null;
         setFailed(true);
+        onBasemapReadyRef.current?.();
       }
     };
 
@@ -349,6 +376,7 @@ export function LightRouteMap({
 
     return () => {
       cancelled = true;
+      window.clearTimeout(revealFallbackId);
       ro?.disconnect();
       if (progressRaf.current !== null) cancelAnimationFrame(progressRaf.current);
       created?.remove();
@@ -356,6 +384,32 @@ export function LightRouteMap({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Safari cold starts: a few post-reveal resizes + tab wake recover a blank canvas.
+  useEffect(() => {
+    if (!ready) return;
+    const wake = () => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.resize();
+      try {
+        map.triggerRepaint();
+      } catch {
+        // best-effort
+      }
+    };
+    const timers = [0, 80, 200, 500].map((ms) => window.setTimeout(wake, ms));
+    const onVisible = () => {
+      if (document.visibilityState === "visible") wake();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", wake);
+    return () => {
+      for (const id of timers) window.clearTimeout(id);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", wake);
+    };
+  }, [ready]);
 
   useEffect(() => {
     const map = mapRef.current;

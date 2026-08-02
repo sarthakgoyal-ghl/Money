@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import type { FlightOption } from "../../../data/scenario";
 import { BLR, BOM, formatINR } from "../../../data/scenario";
 import { LightRouteMap } from "../../map/LightRouteMap";
+import { useStageMapOwner } from "../../shell/stageMapOwner";
 import {
   BaggageIcon,
   CabinClassIcon,
@@ -144,18 +146,41 @@ export function FigRecommendationStack({
 
 /** `1213:77677` — 168 px live route crop with a 36 px glass expand control. */
 function MiniMapPreview({ onExpand }: { onExpand: () => void }) {
+  const { stageOwnsMap, stageBasemapReady } = useStageMapOwner();
+  const [forceMini, setForceMini] = useState(false);
+
+  // Let the desktop stage canvas claim WebGL first — dual cold init left it black.
+  useEffect(() => {
+    if (!stageOwnsMap || stageBasemapReady) return;
+    const id = window.setTimeout(() => setForceMini(true), 3200);
+    return () => window.clearTimeout(id);
+  }, [stageOwnsMap, stageBasemapReady]);
+
+  const mountMini = !stageOwnsMap || stageBasemapReady || forceMini;
+
   return (
     <div className="relative h-[168px] w-full">
-      <LightRouteMap
-        origin={BOM}
-        destination={BLR}
-        variant="mini"
-        tone="active"
-        progress={0.46}
-        camera="proposal"
-        inset={{ top: 28, bottom: 28, left: 40, right: 40 }}
-        className="h-full w-full"
-      />
+      {mountMini ? (
+        <LightRouteMap
+          origin={BOM}
+          destination={BLR}
+          variant="mini"
+          tone="active"
+          progress={0.46}
+          camera="proposal"
+          inset={{ top: 28, bottom: 28, left: 40, right: 40 }}
+          className="h-full w-full"
+        />
+      ) : (
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, #DCEBF7 0%, #E8F1F6 45%, #EFF2ED 100%)",
+          }}
+        />
+      )}
       <button
         type="button"
         onClick={onExpand}

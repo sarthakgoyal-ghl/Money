@@ -67,6 +67,14 @@ export function PrototypeStage({ children, devControls }: PrototypeStageProps) {
   );
 }
 
+/** Rough phone padding so the stage map can mount before the first measure. */
+const PROVISIONAL_STAGE_INSET: MapInset = {
+  top: 120,
+  bottom: 120,
+  left: 120,
+  right: 120,
+};
+
 function StageMapHost({
   stageRef,
   deviceRef,
@@ -74,10 +82,12 @@ function StageMapHost({
   stageRef: RefObject<HTMLDivElement | null>;
   deviceRef: RefObject<HTMLDivElement | null>;
 }) {
-  const { session } = useStageMapOwner();
+  const { session, notifyStageBasemapReady } = useStageMapOwner();
   const phoneInset = session?.phoneInset ?? BACKDROP_PHONE_INSET;
   const stageInset = useDeviceStageInset(stageRef, deviceRef, phoneInset);
   const mapBacked = session !== null;
+  // Never gate mount on measure — a null inset left the stage plate black.
+  const inset = stageInset ?? PROVISIONAL_STAGE_INSET;
 
   return (
     <div
@@ -87,23 +97,22 @@ function StageMapHost({
         session?.explorable ? "pointer-events-auto" : "pointer-events-none",
       ].join(" ")}
     >
-      {stageInset ? (
-        <LightRouteMap
-          origin={BOM}
-          destination={BLR}
-          tone={session?.tone ?? "active"}
-          progress={mapBacked ? (session?.progress ?? 0.46) : null}
-          camera={session?.camera ?? "stage"}
-          variant="full"
-          showProtectedRoute={session?.showProtectedRoute ?? false}
-          showJourney={mapBacked}
-          explorable={session?.explorable ?? false}
-          fitSignal={session?.fitSignal ?? 0}
-          onOffFrameChange={session?.onOffFrameChange ?? noopOffFrame}
-          inset={stageInset}
-          className="absolute inset-0 h-full w-full"
-        />
-      ) : null}
+      <LightRouteMap
+        origin={BOM}
+        destination={BLR}
+        tone={session?.tone ?? "active"}
+        progress={mapBacked ? (session?.progress ?? 0.46) : null}
+        camera={session?.camera ?? "stage"}
+        variant="full"
+        showProtectedRoute={session?.showProtectedRoute ?? false}
+        showJourney={mapBacked}
+        explorable={session?.explorable ?? false}
+        fitSignal={session?.fitSignal ?? 0}
+        onOffFrameChange={session?.onOffFrameChange ?? noopOffFrame}
+        onBasemapReady={notifyStageBasemapReady}
+        inset={inset}
+        className="absolute inset-0 h-full w-full"
+      />
     </div>
   );
 }
