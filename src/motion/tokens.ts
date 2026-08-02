@@ -59,8 +59,12 @@ export const IOS_SHEET_STACK = {
   scrim: "rgba(0, 0, 0, 0.36)",
   /** A touch longer than stock 500ms so the settle feels softer. */
   duration: 0.56,
-  /** Same Apple family, slightly softer deceleration into rest. */
-  ease: [0.22, 0.78, 0.1, 1] as const,
+  /**
+   * Soft decelerate into rest. x1→x2 must stay monotonic — a reversed
+   * control (e.g. 0.22 → 0.1) made Safari/Framer overshoot so stacked
+   * sheets flashed at the top before landing on the bottom.
+   */
+  ease: [0.22, 1, 0.36, 1] as const,
 } as const;
 
 /** Overlay slide + underlay scale/lift — same curve enter and exit. */

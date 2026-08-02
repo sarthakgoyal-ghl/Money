@@ -117,16 +117,26 @@ export function BottomSheet({
    * height — so enter stays a pure y-slide, and chevron resize eases.
    */
   const [heightTweenReady, setHeightTweenReady] = useState(false);
+  /** Drag on the same node as enter `y` fights the slide — gate until settled. */
+  const [enterSettled, setEnterSettled] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setHeightTweenReady(false);
       setCollapsed(false);
+      setEnterSettled(false);
       return;
     }
     const id = window.requestAnimationFrame(() => setHeightTweenReady(true));
-    return () => window.cancelAnimationFrame(id);
-  }, [open]);
+    const settle = window.setTimeout(
+      () => setEnterSettled(true),
+      (stacked ? IOS_SHEET_STACK.duration : duration.sheet) * 1000 + 48,
+    );
+    return () => {
+      window.cancelAnimationFrame(id);
+      window.clearTimeout(settle);
+    };
+  }, [open, stacked]);
 
   const toggle = useCallback(() => {
     if (!canCollapse) return;
@@ -267,27 +277,11 @@ export function BottomSheet({
           )}
 
           {/*
-            Height on this abspos node so % resolves against the dialog.
-            y = enter/exit variants; height CSS-tweens on collapse/expand
-            (same iosSheet curve as the stack) so open stays a clean slide.
+            Slide layer owns enter/exit `y` only. Glass + height sit inside so
+            drag / height tweens cannot yank the sheet to the top mid-present.
           */}
           <motion.div
-            ref={sheetRef}
-            tabIndex={-1}
-            // Keep the freeze plate for the whole overlay life. Restoring blur
-            // after the slide made the scrim suddenly show through the glass.
-            data-sheet-motion={stacked ? "active" : undefined}
-            data-sheet-stacked={stacked ? "true" : undefined}
-            className={[
-              // Same Apple frosted glass as FigSheet — not solid white / night.
-              "fig-sheet absolute inset-x-0 bottom-0 flex w-full flex-col overflow-hidden rounded-t-[24px] outline-none will-change-transform",
-              // Stacked sheets cast a soft elevation shadow like UIKit cards.
-              stacked
-                ? "shadow-[0_-8px_40px_rgba(0,0,0,0.18)]"
-                : "",
-              // Auto hugs content; fixed sizes use style height below.
-              size === "auto" ? "max-h-[88%]" : "",
-            ].join(" ")}
+            className="absolute inset-x-0 bottom-0 will-change-transform"
             style={
               heightPct
                 ? {
@@ -304,7 +298,25 @@ export function BottomSheet({
               closed: reduced ? { opacity: 0, y: 0 } : { y: "100%" },
             }}
             transition={sheetMotion}
-            drag={reduced ? false : "y"}
+          >
+          <motion.div
+            ref={sheetRef}
+            tabIndex={-1}
+            // Keep the freeze plate for the whole overlay life. Restoring blur
+            // after the slide made the scrim suddenly show through the glass.
+            data-sheet-motion={stacked ? "active" : undefined}
+            data-sheet-stacked={stacked ? "true" : undefined}
+            className={[
+              // Same Apple frosted glass as FigSheet — not solid white / night.
+              "fig-sheet flex w-full flex-col overflow-hidden rounded-t-[24px] outline-none",
+              // Stacked sheets cast a soft elevation shadow like UIKit cards.
+              stacked
+                ? "shadow-[0_-8px_40px_rgba(0,0,0,0.18)]"
+                : "",
+              // Fixed sizes fill the slide layer; auto hugs content.
+              size === "auto" ? "max-h-[88%]" : "h-full",
+            ].join(" ")}
+            drag={reduced || !enterSettled ? false : "y"}
             dragControls={dragControls}
             dragListener={false}
             dragConstraints={{ top: 0, bottom: 0 }}
@@ -421,6 +433,7 @@ export function BottomSheet({
             ) : (
               <div aria-hidden="true" className="relative z-[1] h-[28px] shrink-0" />
             )}
+          </motion.div>
           </motion.div>
         </motion.div>
       ) : null}
