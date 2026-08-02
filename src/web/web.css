@@ -1,0 +1,62 @@
+/**
+ * /web-only atmosphere bridges.
+ * Scoped under [data-page="web"] so these rules never leak onto /handover
+ * (main.tsx statically imports WebPage, which would otherwise inject this CSS globally).
+ *
+ * Handover keeps Repair between Confirm and Handoff; /web drops Repair, so
+ * Confirm needs the same soft white dissolve into Handoff.
+ *
+ * Important: `.vx-section > *` is z-index 1. A dissolve ::after above that
+ * paints over CTAs: keep the dissolve at z-index 0.
+ */
+
+[data-page="web"] .vx-brand-full {
+  font-size: 19px;
+}
+
+/* Handover uses a white dissolve + glow into #system. /web drops #system,
+   so principles must not leave a white slab before Approve. */
+[data-page="web"] #principles::after {
+  content: none;
+  display: none;
+}
+
+[data-page="web"] #principles .vx-principles-glow {
+  display: none;
+}
+
+[data-page="web"] #confirmation.vx-tone-blue-soft {
+  padding-bottom: clamp(64px, 8vw, 96px);
+  overflow: visible;
+}
+
+/* Keep story + CTAs above the dissolve (section children default to z-index 1) */
+[data-page="web"] #confirmation.vx-tone-blue-soft > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Soft white dissolve behind content: same look as #repair::after — /web only */
+[data-page="web"] #confirmation.vx-tone-blue-soft::after {
+  content: "";
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  bottom: clamp(-48px, -5vw, -28px);
+  height: clamp(160px, 20vw, 260px);
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(42% 70% at 12% 55%, #ffffff 0%, transparent 70%),
+    radial-gradient(48% 78% at 38% 40%, #ffffff 0%, transparent 72%),
+    radial-gradient(44% 72% at 68% 58%, rgba(255, 255, 255, 0.98) 0%, transparent 70%),
+    radial-gradient(40% 68% at 92% 45%, rgba(255, 255, 255, 0.95) 0%, transparent 68%),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.55) 28%,
+      rgba(255, 255, 255, 0.92) 62%,
+      #ffffff 100%
+    );
+  filter: blur(10px);
+}

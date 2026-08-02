@@ -285,16 +285,16 @@ export function RepairStory() {
               <li>Nothing was charged · AI 621 remains active</li>
               <li>Find another, keep AI 621, or approve ₹6,240</li>
             </ul>
+            <p className="vx-repair-via">
+              Higher-price reconfirmation for ₹6,240 is reached from this repair
+              state in the prototype.
+            </p>
             <ProtoLink
               href={protoHref("price-change")}
               className="vx-btn vx-btn-secondary"
             >
               Open fare-change repair
             </ProtoLink>
-            <p className="vx-repair-via">
-              Higher-price reconfirmation for ₹6,240 is reached from this repair
-              state in the prototype.
-            </p>
           </div>
           <div className="vx-repair-visual is-pair" aria-label="Fare-change screens">
             <ScreenFigure screen={SCREENS.priceChanged} size="story" />

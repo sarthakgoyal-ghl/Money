@@ -5,26 +5,67 @@ import {
   useScroll,
   useTransform,
   useMotionTemplate,
+  useMotionValue,
   type MotionValue,
 } from "motion/react";
 
 const CLOUD_SRC = "/figma/cloud-backdrop.jpg";
 
+/**
+ * Track scroll progress through a section by id.
+ * Missing sections must stay at 0 — never fall through to document scroll
+ * (that turns the night galaxy on early on short pages like /web).
+ */
 function useSectionProgress(sectionId: string) {
   const ref = useRef<HTMLElement | null>(null);
-  const [ready, setReady] = useState(false);
+  const [target, setTarget] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    ref.current = document.getElementById(sectionId);
-    setReady(Boolean(ref.current));
+    const bind = () => {
+      const el = document.getElementById(sectionId);
+      ref.current = el;
+      setTarget(el);
+    };
+    bind();
+    const raf = requestAnimationFrame(bind);
+    return () => cancelAnimationFrame(raf);
   }, [sectionId]);
 
   const { scrollYProgress } = useScroll({
-    target: ready ? ref : undefined,
-    offset: ["start end", "start 35%", "center center", "end start"],
+    target: target ? ref : undefined,
+    offset: ["start end", "end start"],
   });
 
-  return scrollYProgress;
+  return useTransform(scrollYProgress, (value) => (target ? value : 0));
+}
+
+/** Hard gate: 1 only while #scope intersects (with a small lead-in). */
+function useScopeInView() {
+  const visible = useMotionValue(0);
+
+  useEffect(() => {
+    const el = document.getElementById("scope");
+    if (!el) {
+      visible.set(0);
+      return;
+    }
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        visible.set(entry?.isIntersecting ? 1 : 0);
+      },
+      {
+        // Start the night fade slightly before the band fully enters.
+        root: null,
+        rootMargin: "12% 0px 0px 0px",
+        threshold: 0,
+      },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [visible]);
+
+  return visible;
 }
 
 function useLavenderSky(
@@ -77,10 +118,11 @@ function useLavenderSky(
 }
 
 /**
- * Fixed atmospheric stage for /handover:
+ * Fixed atmospheric stage for /handover and /web:
  * soft sky + continuously drifting / parallax clouds,
  * lavender on overview/principles and again on handoff (Singularity pocket),
- * night galaxy only for the closing scope/build band — never over repair/handoff.
+ * night galaxy only while the closing #scope band is in view —
+ * never driven by page-percent scroll (breaks on short /web).
  */
 export function SkyAtmosphere() {
   const reduce = useReducedMotion();
@@ -89,6 +131,7 @@ export function SkyAtmosphere() {
   const principlesProgress = useSectionProgress("principles");
   const handoffProgress = useSectionProgress("handoff");
   const scopeProgress = useSectionProgress("scope");
+  const scopeInView = useScopeInView();
   const { tintOpacity, washOpacity, whiteGround, cloudFilter } = useLavenderSky(
     overviewProgress,
     principlesProgress,
@@ -116,44 +159,34 @@ export function SkyAtmosphere() {
     [0, 1],
     reduce ? [0, 0] : [0, -110],
   );
-  // Clouds stay present through the story; only yield when scope night band enters.
-  const cloudsFromPage = useTransform(
-    scrollYProgress,
-    [0, 0.88, 0.93, 0.97, 1],
-    [1, 1, 0.55, 0.12, 0.08],
-  );
-  const cloudsFromScope = useTransform(
-    scopeProgress,
-    [0, 0.01, 0.06, 0.15, 1],
-    [1, 0.2, 0.05, 0.02, 0.02],
-  );
+
+  // Daytime clouds until #scope is actually on screen, then yield to night.
   const cloudOpacity = useTransform(
-    [cloudsFromPage, cloudsFromScope],
-    ([page, scope]: number[]) => Math.min(page ?? 1, scope ?? 1),
+    [scopeProgress, scopeInView],
+    ([progress, inView]: number[]) => {
+      if ((inView ?? 0) < 1) return 1;
+      const p = progress ?? 0;
+      if (p < 0.08) return 1 - (p / 0.08) * 0.65;
+      if (p < 0.2) return 0.35 - ((p - 0.08) / 0.12) * 0.3;
+      return 0.02;
+    },
   );
-  const galaxyFromPage = useTransform(
-    scrollYProgress,
-    [0, 0.88, 0.92, 0.96, 1],
-    [0, 0, 0.7, 0.95, 0.98],
-  );
-  // Snap night on as soon as Scope enters the viewport.
-  const galaxyFromScope = useTransform(
-    scopeProgress,
-    [0, 0.01, 0.05, 0.12, 1],
-    [0, 0.9, 0.98, 1, 1],
-  );
+
+  // Night ONLY while #scope intersects — no page-percent assist.
   const galaxyOpacity = useTransform(
-    [galaxyFromPage, galaxyFromScope],
-    ([page, scope]: number[]) => Math.max(page ?? 0, scope ?? 0),
+    [scopeProgress, scopeInView],
+    ([progress, inView]: number[]) => {
+      if (reduce) return 0;
+      if ((inView ?? 0) < 1) return 0;
+      const p = progress ?? 0;
+      if (p < 0.06) return (p / 0.06) * 0.85;
+      if (p < 0.16) return 0.85 + ((p - 0.06) / 0.1) * 0.15;
+      return 1;
+    },
   );
-  const veilFromPage = useTransform(
-    scrollYProgress,
-    [0, 0.88, 0.94, 1],
-    [0.55, 0.5, 0.22, 0.14],
-  );
-  const veilOpacity = useTransform(
-    [veilFromPage, galaxyOpacity],
-    ([veil, galaxy]: number[]) => (veil ?? 0) * (1 - Math.min(galaxy ?? 0, 1)),
+
+  const veilOpacity = useTransform(galaxyOpacity, (galaxy) =>
+    0.55 * (1 - Math.min(galaxy ?? 0, 1)),
   );
 
   return (
